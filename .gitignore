@@ -1,0 +1,47 @@
+# =====================================================================
+# .gitignore for EcoTrack AI (Website Project)
+# This file tells Git which files should NOT be uploaded to GitHub.
+# =====================================================================
+
+# 1. Python Virtual Environments and Caches
+venv/
+env/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# 2. Operating System Files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# 3. Microsoft Office Temporary Lock Files
+~$*.docx
+~$*.pptx
+~$*.xlsx
+*.tmp
+
+# 4. Environment Variables & Secrets (Keep your passwords/API keys private!)
+.env
+.env.local
+config.local.json
+
+# 5. Database local files
+*.sqlite3
+*.db
+
+# 6. IDE / Editor settings
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# 7. Compressed archive files (keep the repo light)
+*.zip
+*.tar.gz
+*.rar

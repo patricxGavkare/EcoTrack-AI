@@ -1,0 +1,863 @@
+<!--
+  =============================================================================
+  🌿 EcoTrack AI - Main Frontend Dashboard (index.html)
+  =============================================================================
+  Team: 2nd Year B.Tech Computer Science (EDI Project)
+  What is inside this file:
+  - Header: App title, backend connection status, and viva mode button.
+  - KPI Cards: Unified Green Score, Today's Carbon, Weekly Average, Eco-points.
+  - 7-Category Logger: Form to enter daily transport, electricity, food, etc.
+  - Charts: Donut chart and 7-day emission trend chart using Chart.js.
+  - AI Recommendations: Automated tips based on your largest emission source.
+  - ML Simulator: Sliders to test "what-if" carbon reduction scenarios.
+  - Gamification: Eco-badges, challenges, and recent activity history table.
+  =============================================================================
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EcoTrack AI — Personal Carbon Footprint & Green Impact Tracker</title>
+  
+  <!-- Apple-Style SVG Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌿</text></svg>">
+
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+  
+  <!-- Chart.js library for graphs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- Top Navigation & Academic Header -->
+  <header class="site-header">
+    <div class="header-container">
+      <div class="brand-wrapper">
+        <div class="brand-logo-icon">🌿</div>
+        <div class="brand-text">
+          <h1>EcoTrack AI <span class="brand-tag">v2.0 Beta</span></h1>
+          <p class="brand-subtext">AI-Based Personal Carbon Footprint & Green Impact Tracker</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Circular Profile Avatar Button (Chrome / Apple Style) -->
+        <button class="profile-avatar-btn" id="btnProfileMenu" aria-label="Open profile and account menu">
+          <span class="avatar-circle" id="headerAvatarCircle">P</span>
+          <span class="online-indicator"></span>
+        </button>
+
+        <!-- Sidebar-Panel Style Profile Dropdown (Reference Screenshot Design) -->
+        <div class="profile-dropdown-card" id="profileDropdownCard">
+
+          <!-- TOP SECTION: Avatar (left) + Name + Amber Tagline -->
+          <div class="pdc-top">
+            <div class="pdc-avatar" id="profileLargeAvatar">P</div>
+            <div class="pdc-top-info">
+              <div class="pdc-username" id="profileCardName">Pratik</div>
+              <div class="pdc-tagline" id="profileCardEmail">🌱 Eco Scholar • Level 3</div>
+              <div class="pdc-badge-row">
+                <span class="pdc-badge" id="profileStreakTag">🔥 8 Day Streak</span>
+                <span class="pdc-badge green" id="profilePointsTag">⭐ 460 Pts</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ICON GRID: 4 Quick-Navigate Boxes -->
+          <div class="pdc-icon-grid">
+            <button class="pdc-icon-box" data-tab-target="dashboard">
+              <span class="pdc-box-icon">📊</span>
+              <span class="pdc-box-label">Dashboard</span>
+            </button>
+            <button class="pdc-icon-box" data-tab-target="logger">
+              <span class="pdc-box-icon">📝</span>
+              <span class="pdc-box-label">Daily Logger</span>
+            </button>
+            <button class="pdc-icon-box" data-tab-target="ai-simulator">
+              <span class="pdc-box-icon">🔮</span>
+              <span class="pdc-box-label">AI Engine</span>
+            </button>
+            <button class="pdc-icon-box" data-tab-target="history">
+              <span class="pdc-box-icon">🏆</span>
+              <span class="pdc-box-label">Badges</span>
+            </button>
+          </div>
+
+          <div class="pdc-divider"></div>
+
+          <!-- VERTICAL MENU LIST -->
+          <div class="pdc-menu-list">
+            <button class="pdc-menu-item" id="btnProfileViva">
+              <span class="pdc-menu-icon">🎓</span>
+              <span class="pdc-menu-text">Try Viva Mode</span>
+              <span class="pdc-menu-arrow">›</span>
+            </button>
+            <button class="pdc-menu-item" id="btnEditProfile">
+              <span class="pdc-menu-icon">✏️</span>
+              <span class="pdc-menu-text">Edit Profile</span>
+              <span class="pdc-menu-arrow">›</span>
+            </button>
+            <div class="pdc-menu-item" style="cursor: default;">
+              <span class="pdc-menu-icon">⚡</span>
+              <span class="pdc-menu-text" style="flex:1;">
+                AI Engine Status
+                <span class="pdc-menu-sub" id="apiStatusText">Local AI Engine</span>
+              </span>
+              <span class="pdc-status-dot" id="statusDot"></span>
+            </div>
+            <button class="pdc-menu-item" id="itemProfilePersonal" data-profile="pratik-personal">
+              <span class="pdc-menu-icon">👤</span>
+              <span class="pdc-menu-text">Pratik (Personal)</span>
+              <span class="pdc-active-check" id="switchProfileName1">✓</span>
+            </button>
+            <button class="pdc-menu-item" id="itemProfileCollege" data-profile="pratik-vit">
+              <span class="pdc-menu-icon">🎓</span>
+              <span class="pdc-menu-text">PRATIK (vit.edu)</span>
+              <span class="pdc-menu-arrow">›</span>
+            </button>
+            <button class="pdc-menu-item" id="btnOpenLoginModal">
+              <span class="pdc-menu-icon">➕</span>
+              <span class="pdc-menu-text">Add Profile / Login</span>
+              <span class="pdc-menu-arrow">›</span>
+            </button>
+            <button class="pdc-menu-item danger" id="btnSignOut">
+              <span class="pdc-menu-icon">🚪</span>
+              <span class="pdc-menu-text">Sign Out</span>
+              <span class="pdc-menu-arrow">›</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Apple-Style Segmented Navigation Bar (Solves Visually Vast Problem) -->
+  <div class="apple-nav-bar">
+    <nav class="apple-nav-segmented" id="mainTabNav" aria-label="Main Section Navigation">
+      <button class="nav-segment-btn active" data-tab="dashboard">
+        <span class="segment-icon">📊</span>
+        <span class="segment-text">Dashboard</span>
+      </button>
+      <button class="nav-segment-btn" data-tab="logger">
+        <span class="segment-icon">📝</span>
+        <span class="segment-text">Daily Logger</span>
+      </button>
+      <button class="nav-segment-btn" data-tab="ai-simulator">
+        <span class="segment-icon">🔮</span>
+        <span class="segment-text">AI & Simulator</span>
+      </button>
+      <button class="nav-segment-btn" data-tab="history">
+        <span class="segment-icon">🏆</span>
+        <span class="segment-text">History & Badges</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Main Application Body -->
+  <main class="app-container">
+    
+    <!-- ====================================================================
+         TAB 1: 📊 DASHBOARD & OVERVIEW
+         ==================================================================== -->
+    <div class="tab-view active" id="tabDashboard">
+      
+      <!-- Hero Banner (Inspired by Slide 1) -->
+      <section class="project-banner" aria-label="Project Overview">
+        <div class="banner-content">
+          <div class="banner-tagline">Mid-Semester Project Review • CS / Engineering</div>
+          <h2 class="banner-title">Track your emissions. Understand your behavior. Act with AI-guided insight.</h2>
+          <p class="banner-desc">An intelligent system that calculates personal carbon emissions across 7 activity categories, analyzes behavior patterns, predicts future emissions using ML, and generates a Unified Green Score.</p>
+        </div>
+        <div class="banner-stats">
+          <div class="banner-stat-box">
+            <div class="banner-stat-num">7</div>
+            <div class="banner-stat-lbl">Emission Categories</div>
+          </div>
+          <div class="banner-stat-box">
+            <div class="banner-stat-num">AI/ML</div>
+            <div class="banner-stat-lbl">Behavior + Predictor</div>
+          </div>
+          <div class="banner-stat-box">
+            <div class="banner-stat-num">1</div>
+            <div class="banner-stat-lbl">Unified Green Score</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Key Performance Indicator Cards (Slides 1, 2, 7) -->
+      <section class="kpi-grid" aria-label="Key Performance Indicators">
+        
+        <!-- Card 1: Unified Green Score -->
+        <div class="kpi-card green-score-hero" id="greenScoreCard">
+          <div class="kpi-card-header">
+            <span class="kpi-title">Unified Green Score</span>
+            <div class="kpi-icon-box">🏆</div>
+          </div>
+          <div class="score-meter-wrap">
+            <div class="score-circle" id="scoreCircle">
+              <div class="score-circle-inner" id="scoreDisplay">82</div>
+            </div>
+            <div>
+              <div class="kpi-value" id="scoreRatingText" style="font-size: 1.35rem; color: var(--accent-mint);">Low Impact</div>
+              <div class="kpi-footer" id="scoreBadgeText" style="margin-top: 0.2rem;">🌱 Good Standing</div>
+            </div>
+          </div>
+          <div class="kpi-footer" style="margin-top: 0.85rem;" id="scoreSummaryDesc">
+            Top 15% eco-performance on campus
+          </div>
+        </div>
+
+        <!-- Card 2: Today's Carbon Footprint -->
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <span class="kpi-title">Today's Footprint</span>
+            <div class="kpi-icon-box">🌍</div>
+          </div>
+          <div>
+            <div class="kpi-value-row">
+              <span class="kpi-value" id="todayTotalValue">5.8</span>
+              <span class="kpi-unit">kg CO₂e</span>
+            </div>
+            <div class="kpi-footer">
+              <span class="trend-badge positive" id="todayBenchmarkBadge">↓ 41% below avg</span>
+              <span>vs 9.8 kg nat'l avg</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: 7-Day Rolling Average -->
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <span class="kpi-title">Weekly Average</span>
+            <div class="kpi-icon-box">📈</div>
+          </div>
+          <div>
+            <div class="kpi-value-row">
+              <span class="kpi-value" id="weeklyAvgValue">7.4</span>
+              <span class="kpi-unit">kg CO₂e / day</span>
+            </div>
+            <div class="kpi-footer">
+              <span class="trend-badge positive" id="weeklyTrendBadge">↓ 18.2%</span>
+              <span>reduction this week</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4: Eco Streak & Green Points -->
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <span class="kpi-title">Gamified Eco-Points</span>
+            <div class="kpi-icon-box">⭐</div>
+          </div>
+          <div>
+            <div class="kpi-value-row">
+              <span class="kpi-value" id="userPointsValue">460</span>
+              <span class="kpi-unit">pts</span>
+            </div>
+            <div class="kpi-footer">
+              <span>🔥 Level 3: Sustainable Scholar</span>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Quick Action Prompt to Log Activities -->
+      <div class="quick-action-strip">
+        <div>
+          <strong style="color: #ffffff; font-size: 0.95rem;">Track today's carbon footprint</strong>
+          <p style="margin-top: 0.15rem; font-size: 0.82rem; color: var(--text-secondary);">Log your travel, electricity, meals, and waste to see your Green Score update in real time.</p>
+        </div>
+        <button class="btn-quick-log" id="btnQuickLogTab">
+          <span>+</span> Log Activities Now
+        </button>
+      </div>
+
+      <!-- 2-Column Dashboard Charts Grid -->
+      <div class="dashboard-charts-grid">
+        
+        <!-- Chart 1: Donut Breakdown -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <h4 class="chart-title">7-Category Emission Share</h4>
+              <p class="panel-subtitle">Distribution of carbon sources over recent days</p>
+            </div>
+          </div>
+          <div class="chart-container-wrap">
+            <canvas id="categoryDonutCanvas"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 2: Daily & Weekly Trend -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <h4 class="chart-title">Emission Trend vs Paris 1.5°C Target</h4>
+              <p class="panel-subtitle">Tracking progress towards international benchmarks</p>
+            </div>
+            <div class="chart-range-toggles">
+              <button class="btn-range-toggle active" data-range="7">7 Days</button>
+              <button class="btn-range-toggle" data-range="14">14 Days</button>
+            </div>
+          </div>
+          <div class="chart-container-wrap">
+            <canvas id="trendChartCanvas"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ====================================================================
+         TAB 2: 📝 QUICK DAILY LOGGER + MONTHLY LOGGER
+         ==================================================================== -->
+    <div class="tab-view" id="tabLogger">
+
+      <!-- ── SECTION HEADER ── -->
+      <div class="logger-section-header">
+        <div>
+          <h2 class="logger-hero-title">📝 Daily Carbon Logger</h2>
+          <p class="logger-hero-sub">Answer 4 quick questions · Takes under 15 seconds</p>
+        </div>
+        <div class="logger-streak-chip" id="loggerStreakChip">
+          🔥 <span id="loggerStreakNum">8</span> day streak
+        </div>
+      </div>
+
+      <!-- ── TWO COLUMN LAYOUT ── -->
+      <div class="logger-two-col">
+
+        <!-- ════════════════════════════════════════
+             LEFT: MCQ QUICK DAILY LOGGER
+             ════════════════════════════════════════ -->
+        <div class="ql-card" id="quickLoggerCard">
+
+          <!-- Step Progress Bar -->
+          <div class="ql-progress-bar">
+            <div class="ql-progress-step active" data-step="1">1</div>
+            <div class="ql-progress-line" id="pLine1"></div>
+            <div class="ql-progress-step" data-step="2">2</div>
+            <div class="ql-progress-line" id="pLine2"></div>
+            <div class="ql-progress-step" data-step="3">3</div>
+            <div class="ql-progress-line" id="pLine3"></div>
+            <div class="ql-progress-step" data-step="4">4</div>
+          </div>
+
+          <!-- ── STEP 1: Transport Mode ── -->
+          <div class="ql-step active" id="qlStep1">
+            <div class="ql-step-label">Step 1 of 4 · Transport</div>
+            <h3 class="ql-question">How did you travel today? 🚗</h3>
+            <div class="ql-mcq-grid" id="transportModeGrid">
+              <button class="ql-mcq-btn" data-val="walked" data-factor="0" data-label="Walked">🚶 Walked</button>
+              <button class="ql-mcq-btn" data-val="cycle" data-factor="0" data-label="Cycled">🚴 Cycled</button>
+              <button class="ql-mcq-btn" data-val="bus_public" data-factor="0.089" data-label="Bus / Metro">🚌 Bus / Metro</button>
+              <button class="ql-mcq-btn" data-val="two_wheeler" data-factor="0.113" data-label="2-Wheeler">🛵 2-Wheeler</button>
+              <button class="ql-mcq-btn" data-val="petrol_car" data-factor="0.192" data-label="Car">🚗 Car</button>
+              <button class="ql-mcq-btn" data-val="auto" data-factor="0.145" data-label="Cab / Auto">🚖 Cab / Auto</button>
+            </div>
+            <div class="ql-custom-row">
+              <button class="ql-custom-toggle" id="btnShowTransportCustom">✏️ I'll enter exact km myself</button>
+              <div class="ql-custom-input-wrap hidden" id="transportCustomWrap">
+                <input type="number" class="ql-custom-input" id="transportCustomKm" placeholder="e.g. 18" min="0">
+                <span class="ql-custom-unit">km</span>
+              </div>
+            </div>
+            <div class="ql-nav-row">
+              <div></div>
+              <button class="ql-btn-next" id="qlNext1" disabled>Next →</button>
+            </div>
+          </div>
+
+          <!-- ── STEP 2: Distance ── -->
+          <div class="ql-step" id="qlStep2">
+            <div class="ql-step-label">Step 2 of 4 · Distance</div>
+            <h3 class="ql-question">Roughly how far? 📍</h3>
+            <p class="ql-hint" id="qlDistanceHint">Select the distance range for your trip</p>
+            <div class="ql-mcq-grid three-col" id="distanceGrid">
+              <button class="ql-mcq-btn distance-btn" data-km="3" data-label="Nearby (< 5 km)">
+                <span class="ql-mcq-icon">🏘️</span>
+                <span class="ql-mcq-title">Nearby</span>
+                <span class="ql-mcq-sub">Less than 5 km</span>
+              </button>
+              <button class="ql-mcq-btn distance-btn" data-km="12" data-label="Medium (5–20 km)">
+                <span class="ql-mcq-icon">🏙️</span>
+                <span class="ql-mcq-title">Medium</span>
+                <span class="ql-mcq-sub">5 – 20 km</span>
+              </button>
+              <button class="ql-mcq-btn distance-btn" data-km="30" data-label="Far (> 20 km)">
+                <span class="ql-mcq-icon">🛣️</span>
+                <span class="ql-mcq-title">Far</span>
+                <span class="ql-mcq-sub">More than 20 km</span>
+              </button>
+            </div>
+            <div class="ql-custom-row">
+              <button class="ql-custom-toggle" id="btnShowDistCustom">✏️ Enter exact km</button>
+              <div class="ql-custom-input-wrap hidden" id="distCustomWrap">
+                <input type="number" class="ql-custom-input" id="distCustomKm" placeholder="e.g. 22" min="0">
+                <span class="ql-custom-unit">km</span>
+              </div>
+            </div>
+            <div class="ql-nav-row">
+              <button class="ql-btn-back" id="qlBack2">← Back</button>
+              <button class="ql-btn-next" id="qlNext2" disabled>Next →</button>
+            </div>
+          </div>
+
+          <!-- ── STEP 3: Return Trip ── -->
+          <div class="ql-step" id="qlStep3">
+            <div class="ql-step-label">Step 3 of 4 · Return Trip</div>
+            <h3 class="ql-question">Did you travel back the same way? 🔄</h3>
+            <div class="ql-mcq-grid three-col" id="returnGrid">
+              <button class="ql-mcq-btn return-btn" data-multiplier="2" data-label="Yes, same route back">
+                <span class="ql-mcq-icon">✅</span>
+                <span class="ql-mcq-title">Yes</span>
+                <span class="ql-mcq-sub">Same route back</span>
+              </button>
+              <button class="ql-mcq-btn return-btn" data-multiplier="1.5" data-label="Shorter return">
+                <span class="ql-mcq-icon">↩️</span>
+                <span class="ql-mcq-title">Shorter</span>
+                <span class="ql-mcq-sub">Different, shorter way</span>
+              </button>
+              <button class="ql-mcq-btn return-btn" data-multiplier="1" data-label="One way only">
+                <span class="ql-mcq-icon">➡️</span>
+                <span class="ql-mcq-title">One Way</span>
+                <span class="ql-mcq-sub">Didn't return / stayed</span>
+              </button>
+            </div>
+            <div class="ql-nav-row">
+              <button class="ql-btn-back" id="qlBack3">← Back</button>
+              <button class="ql-btn-next" id="qlNext3" disabled>Next →</button>
+            </div>
+          </div>
+
+          <!-- ── STEP 4: Food ── -->
+          <div class="ql-step" id="qlStep4">
+            <div class="ql-step-label">Step 4 of 4 · Food & Diet</div>
+            <h3 class="ql-question">What did you mostly eat today? 🍽️</h3>
+            <div class="ql-mcq-grid" id="foodGrid">
+              <button class="ql-mcq-btn food-btn" data-co2="1.5" data-label="Full Vegetarian">🥦 Full Veg</button>
+              <button class="ql-mcq-btn food-btn" data-co2="1.9" data-label="Eggs / Dairy">🍳 Eggs / Dairy</button>
+              <button class="ql-mcq-btn food-btn" data-co2="2.8" data-label="Chicken / Fish">🍗 Chicken / Fish</button>
+              <button class="ql-mcq-btn food-btn" data-co2="5.0" data-label="Red Meat">🥩 Red Meat</button>
+              <button class="ql-mcq-btn food-btn" data-co2="3.2" data-label="Ordered In / Zomato">🍕 Ordered In</button>
+              <button class="ql-mcq-btn food-btn" data-co2="2.5" data-label="Ate at Restaurant">🍽️ Restaurant</button>
+            </div>
+            <div class="ql-nav-row">
+              <button class="ql-btn-back" id="qlBack4">← Back</button>
+              <button class="ql-btn-submit" id="qlSubmit" disabled>⚡ Calculate My Footprint</button>
+            </div>
+          </div>
+
+          <!-- ── RESULT: Carbon Receipt ── -->
+          <div class="ql-step" id="qlReceipt">
+            <div class="carbon-receipt">
+              <div class="receipt-header">
+                <span class="receipt-logo">🌍</span>
+                <div>
+                  <div class="receipt-title">Your Carbon Bill</div>
+                  <div class="receipt-date" id="receiptDate">Today</div>
+                </div>
+              </div>
+              <div class="receipt-items" id="receiptItems"></div>
+              <div class="receipt-total-row">
+                <span>TOTAL TODAY</span>
+                <span class="receipt-total-val" id="receiptTotal">0.00 kg CO₂</span>
+              </div>
+              <div class="receipt-comparisons" id="receiptComparisons"></div>
+              <div class="receipt-actions">
+                <button class="ql-btn-back" id="qlLogAgain">← Log Again</button>
+                <button class="ql-btn-submit" id="qlSaveToHistory">✅ Save to History</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ════════════════════════════════════════
+             RIGHT: TODAY'S LOG + MONTHLY LOGGER
+             ════════════════════════════════════════ -->
+        <div class="logger-right-col">
+
+          <!-- Today's Logged Activities -->
+          <div class="today-logs-card">
+            <div class="panel-header">
+              <div class="panel-title-wrap">
+                <span style="font-size: 1.2rem;">⚡</span>
+                <div>
+                  <h4 class="panel-title">Today's Logged Activities</h4>
+                  <p class="panel-subtitle">Running total for today</p>
+                </div>
+              </div>
+              <button class="btn-range-toggle" id="btnViewFullHistory">View All →</button>
+            </div>
+            <div class="today-logs-list" id="todayLogsMiniList"></div>
+          </div>
+
+          <!-- ── MONTHLY LOGGER CARD ── -->
+          <div class="monthly-logger-card" id="monthlyLoggerCard">
+            <div class="monthly-logger-header">
+              <div>
+                <div class="monthly-label">📅 Monthly Utilities Logger</div>
+                <div class="monthly-sub">Electricity · LPG · Water · Shopping · Waste</div>
+              </div>
+              <div class="monthly-access-badge" id="monthlyAccessBadge">🔒 Locked</div>
+            </div>
+
+            <!-- LOCKED STATE -->
+            <div class="monthly-locked-state" id="monthlyLockedState">
+              <div class="monthly-lock-icon">🔒</div>
+              <div class="monthly-lock-title">Opens on the 1st</div>
+              <div class="monthly-lock-sub" id="monthlyLockSub">Available 1st–5th of every month</div>
+              <div class="monthly-last-logged" id="monthlyLastLogged"></div>
+            </div>
+
+            <!-- UNLOCKED STATE (1st–5th only) -->
+            <div class="monthly-unlocked-state hidden" id="monthlyUnlockedState">
+              <div class="monthly-unlock-banner">
+                ✅ Monthly window is open! Log before the 5th.
+              </div>
+
+              <!-- Q1: Electricity -->
+              <div class="mq-group">
+                <div class="mq-label">⚡ Electricity bill this month?</div>
+                <div class="mq-options" id="mq1">
+                  <button class="mq-btn" data-val="100" data-label="Low (< ₹500)">Low<span>< ₹500</span></button>
+                  <button class="mq-btn" data-val="300" data-label="Medium (₹500–₹1500)">Medium<span>₹500–1500</span></button>
+                  <button class="mq-btn" data-val="600" data-label="High (> ₹1500)">High<span>> ₹1500</span></button>
+                </div>
+                <div class="mq-custom-row">
+                  <input type="number" class="mq-custom-input" id="mqElecUnits" placeholder="Or enter exact units (kWh)">
+                </div>
+              </div>
+
+              <!-- Q2: LPG -->
+              <div class="mq-group">
+                <div class="mq-label">🔥 LPG cylinders used this month?</div>
+                <div class="mq-options" id="mq2">
+                  <button class="mq-btn" data-val="0" data-label="0 cylinders">None<span>0</span></button>
+                  <button class="mq-btn" data-val="1" data-label="1 cylinder">One<span>1 cylinder</span></button>
+                  <button class="mq-btn" data-val="2" data-label="2 cylinders">Two<span>2 cylinders</span></button>
+                </div>
+              </div>
+
+              <!-- Q3: Water -->
+              <div class="mq-group">
+                <div class="mq-label">💧 Water usage this month?</div>
+                <div class="mq-options" id="mq3">
+                  <button class="mq-btn" data-val="3000" data-label="Low (< 3000 L)">Low<span>< 3000 L</span></button>
+                  <button class="mq-btn" data-val="6000" data-label="Average">Average<span>3000–8000 L</span></button>
+                  <button class="mq-btn" data-val="12000" data-label="High (> 8000 L)">High<span>> 8000 L</span></button>
+                </div>
+              </div>
+
+              <!-- Q4: Shopping -->
+              <div class="mq-group">
+                <div class="mq-label">🛍️ Shopping / purchases this month?</div>
+                <div class="mq-options" id="mq4">
+                  <button class="mq-btn" data-val="500" data-label="Essentials only">Essentials<span>Food, toiletries</span></button>
+                  <button class="mq-btn" data-val="2000" data-label="Some extras">Some extras<span>1–2 items</span></button>
+                  <button class="mq-btn" data-val="5000" data-label="Lots of shopping">Shopping spree<span>Clothes, gadgets</span></button>
+                </div>
+              </div>
+
+              <!-- Q5: Waste -->
+              <div class="mq-group">
+                <div class="mq-label">🗑️ Waste generated at home?</div>
+                <div class="mq-options" id="mq5">
+                  <button class="mq-btn" data-val="10" data-label="Very less (< 1 bag/day)">Very less<span>< 1 bag/day</span></button>
+                  <button class="mq-btn" data-val="25" data-label="Average (2–3 bags/week)">Average<span>2–3 bags/week</span></button>
+                  <button class="mq-btn" data-val="50" data-label="Quite a lot">Quite a lot<span>Daily full bags</span></button>
+                </div>
+              </div>
+
+              <button class="monthly-submit-btn" id="btnMonthlySubmit">
+                📊 Save Monthly Report
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ====================================================================
+         TAB 3: 🔮 AI BEHAVIOR & ML SIMULATOR
+         ==================================================================== -->
+    <div class="tab-view" id="tabAiSimulator">
+      
+      <!-- AI Behavior Analysis & Personalized Recommendations -->
+      <section class="ai-section-wrap" aria-label="AI Recommendations">
+        <div class="section-title-bar">
+          <div>
+            <h3 class="section-title">
+              <span>🤖</span> AI Behavior Analysis & Personalized Recommendations
+            </h3>
+            <p class="panel-subtitle" id="aiBehaviorSummary">
+              Analyzing 14-day patterns: Dominant source is Transportation (41.2%). Detected 0 abnormal spikes.
+            </p>
+          </div>
+        </div>
+
+        <div class="ai-recommendations-grid" id="aiRecommendationsGrid">
+          <!-- Rendered dynamically by AIEngine -->
+        </div>
+      </section>
+
+      <!-- Machine Learning Future Emission Predictor & What-If Simulator -->
+      <section class="panel-card" style="margin-top: 0.5rem;" aria-label="ML Emission Forecast">
+        <div class="panel-header">
+          <div class="panel-title-wrap">
+            <span style="font-size: 1.35rem;">🔮</span>
+            <div>
+              <h3 class="panel-title">Machine Learning Emission Predictor & What-If Simulator</h3>
+              <p class="panel-subtitle">Linear regression model trained on your log history forecasting the next 7 days</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="simulator-container">
+          <!-- Interactive Sliders -->
+          <div class="sim-controls-card">
+            <h4 style="font-family: var(--font-heading); color: #ffffff; font-size: 0.95rem;">
+              Test Behavioral Scenarios (Slide 2: "What-If" Loop)
+            </h4>
+
+            <div class="slider-group">
+              <div class="slider-label-row">
+                <span>Shift Personal Vehicles to Public Transit / Metro</span>
+                <span class="slider-val-tag" id="valSliderTransport">0%</span>
+              </div>
+              <input type="range" class="eco-range-slider" id="sliderTransport" min="0" max="100" value="0">
+            </div>
+
+            <div class="slider-group">
+              <div class="slider-label-row">
+                <span>Reduce AC & Heavy Appliance Usage</span>
+                <span class="slider-val-tag" id="valSliderElectricity">0%</span>
+              </div>
+              <input type="range" class="eco-range-slider" id="sliderElectricity" min="0" max="100" value="0">
+            </div>
+
+            <div class="slider-group">
+              <div class="slider-label-row">
+                <span>Incorporate Plant-Based & Vegetarian Meals</span>
+                <span class="slider-val-tag" id="valSliderDiet">0%</span>
+              </div>
+              <input type="range" class="eco-range-slider" id="sliderDiet" min="0" max="100" value="0">
+            </div>
+
+            <div class="sim-impact-summary">
+              <div class="sim-impact-left">
+                <h4>Predicted Weekly Savings</h4>
+                <p>Forecasted reduction based on OLS model</p>
+              </div>
+              <div class="sim-impact-num" id="projectedSavingsDisplay">0.0 kg</div>
+            </div>
+          </div>
+
+          <!-- Prediction Graph Canvas -->
+          <div class="chart-card" style="margin-bottom: 0;">
+            <div class="chart-header">
+              <div>
+                <h5 class="chart-title">7-Day Trajectory Forecast</h5>
+                <p class="panel-subtitle">Status Quo vs AI-Optimized Lifestyle</p>
+              </div>
+            </div>
+            <div class="chart-container-wrap">
+              <canvas id="predictionChartCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ====================================================================
+         TAB 4: 🏆 HISTORY & GAMIFICATION BADGES
+         ==================================================================== -->
+    <div class="tab-view" id="tabHistory">
+      
+      <!-- Gamification: Badges & Community Challenges -->
+      <section class="gamification-grid" aria-label="Badges and Challenges">
+        
+        <!-- Badges Card -->
+        <div class="panel-card">
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <span style="font-size: 1.2rem;">🏅</span>
+              <div>
+                <h3 class="panel-title">Eco-Badges</h3>
+                <p class="panel-subtitle">Achievements unlocked through sustainable habits</p>
+              </div>
+            </div>
+          </div>
+          <div class="badges-panel" id="badgesContainer">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Active Challenges Card -->
+        <div class="panel-card">
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <span style="font-size: 1.2rem;">🎯</span>
+              <div>
+                <h3 class="panel-title">Active Challenges</h3>
+                <p class="panel-subtitle">Weekly goals to boost Green Score and earn points</p>
+              </div>
+            </div>
+          </div>
+          <div id="challengesContainer">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Recent Activity History Table -->
+      <section class="panel-card" aria-label="Recent Logs">
+        <div class="panel-header">
+          <div class="panel-title-wrap">
+            <span style="font-size: 1.2rem;">📋</span>
+            <div>
+              <h3 class="panel-title">Activity Log & Carbon Breakdown</h3>
+              <p class="panel-subtitle">Recent entries processed by the system</p>
+            </div>
+          </div>
+        </div>
+        <div class="history-table-wrap">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>Category</th>
+                <th>Activity Description</th>
+                <th>Logged Amount</th>
+                <th>Emissions (kg CO₂e)</th>
+                <th>Points</th>
+              </tr>
+            </thead>
+            <tbody id="activityTableBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- Academic Viva / Project Defense Modal -->
+  <div class="viva-modal-overlay" id="vivaModalOverlay" role="dialog" aria-modal="true" aria-labelledby="vivaTitle">
+    <div class="viva-modal-content">
+      <div class="viva-modal-header">
+        <h3 id="vivaTitle">🎓 2nd Year Mid-Semester Viva & Project Defense Guide</h3>
+        <button class="btn-close-modal" id="btnCloseViva" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="viva-modal-body">
+        
+        <div class="viva-card-block">
+          <h4>💡 1-Sentence Project Summary (Slide 2)</h4>
+          <p><em>"An intelligent full-loop web application that calculates personal greenhouse gas emissions across 7 categories, applies AI/ML to analyze behavioral patterns, predicts future emissions, and generates a Unified Green Score to motivate sustainable lifestyle changes."</em></p>
+        </div>
+
+        <div class="viva-card-block">
+          <h4>⚙️ Full Loop Architecture (Slide 4 & 7)</h4>
+          <p>Unlike existing static calculators that stop at a single number, our project implements the complete closed loop:</p>
+          <p style="margin-top: 0.5rem; color: #34d399; font-weight: 600;">
+            User Activity Input → CO₂e Calculation (IPCC Factors) → Storage (MySQL) → AI Behavior Analysis → Recommendation Engine → Scikit-learn Future Prediction → Unified Green Score → Gamified Motivation
+          </p>
+        </div>
+
+        <div class="viva-card-block">
+          <h4>📊 Scientific Calculation Formula (Slide 10)</h4>
+          <div class="viva-code-snippet">
+Emission (kg CO₂e) = Activity Amount × Verified Emission Factor
+• Transportation: 20 km × 0.12 kg CO₂e/km = 2.4 kg CO₂e
+• Electricity: 5 kWh × 0.70 kg CO₂e/kWh = 3.5 kg CO₂e
+• Sourced from DEFRA (UK GHG Factors) & Central Electricity Authority (India)
+          </div>
+        </div>
+
+        <div class="viva-card-block">
+          <h4>🧠 Machine Learning & AI Components (Slide 1, 6)</h4>
+          <ul>
+            <li><strong>Behavior Analysis:</strong> Analyzes category percentage shares and flags consumption anomalies using statistical deviation: <code>Anomalies = days > (mean + 1.25 × stdDev)</code>.</li>
+            <li><strong>Emission Predictor:</strong> Fits historical time series using Ordinary Least Squares (OLS) Linear Regression (<code>y = mx + c</code>, matching Scikit-learn's <code>LinearRegression()</code>) to forecast next 7-day trajectories.</li>
+            <li><strong>Recommendation Engine:</strong> Rule-based heuristic system targeting the user's primary emission contributor with quantifiable reduction calculations.</li>
+          </ul>
+        </div>
+
+        <div class="viva-card-block">
+          <h4>🔌 Flask Backend Integration (Slide 6)</h4>
+          <p>The frontend is decoupled and ready to communicate with your Python Flask API:</p>
+          <div class="viva-code-snippet">
+POST http://127.0.0.1:5000/api/calculate   -> Computes category CO2e
+POST http://127.0.0.1:5000/api/predict     -> Runs Scikit-learn model
+GET  http://127.0.0.1:5000/api/health      -> Health check
+          </div>
+        </div>
+
+        <div class="viva-card-block">
+          <h4>❓ Top 3 Examiner Viva Questions & Answers</h4>
+          <p style="margin-bottom: 0.5rem;"><strong>Q1: Why do we need AI if carbon is calculated with simple formulas?</strong><br>
+          <em>Ans: The calculation is standard, but the AI is needed for behavioral pattern recognition, identifying emission anomalies, tailoring actionable recommendations with highest ROI, and predicting future trajectory based on current habits.</em></p>
+          
+          <p style="margin-bottom: 0.5rem;"><strong>Q2: What is the Unified Green Score?</strong><br>
+          <em>Ans: It normalizes emissions onto an intuitive 0-100 scale benchmarked against the Paris Agreement 1.5°C climate target (4.1 kg/day) and national averages (9.8 kg/day).</em></p>
+
+          <p><strong>Q3: How are the ML models trained?</strong><br>
+          <em>Ans: In the Python Flask backend, Scikit-learn's LinearRegression and moving window regressors are trained on user historical log timestamps and category series, while behavior clustering groups user habits.</em></p>
+        </div>
+
+      </div>
+    </div>
+  <!-- Login / Edit Profile Modal -->
+  <div class="login-modal-overlay" id="loginModalOverlay" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+    <div class="login-modal-content">
+      <div class="login-modal-header">
+        <h3 id="loginModalTitle" style="color: #ffffff; font-size: 1.15rem; font-family: var(--font-heading);">👤 Customise Profile & Login</h3>
+        <button class="btn-close-modal" id="btnCloseLogin" aria-label="Close modal">&times;</button>
+      </div>
+      <form class="login-form" id="loginForm">
+        <div class="avatar-preview-wrap">
+          <div class="avatar-preview-circle" id="modalAvatarPreview">P</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inputProfileName">Your Name</label>
+          <input type="text" class="form-input" id="inputProfileName" placeholder="e.g. Pratik" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inputProfileEmail">Email / College ID</label>
+          <input type="email" class="form-input" id="inputProfileEmail" placeholder="pratikgavkare28@gmail.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inputProfileCollege">College & Roll No. (Optional)</label>
+          <input type="text" class="form-input" id="inputProfileCollege" placeholder="e.g. VIT Pune - Roll No. 180">
+        </div>
+        <button type="submit" class="btn-submit-activity" style="margin-top: 1.25rem;">
+          <span>✓</span> Save & Switch Profile
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- JavaScript Modules in Dependency Order -->
+  <script src="js/carbon-calc.js?v=2"></script>
+  <script src="js/mock-data.js?v=2"></script>
+  <script src="js/ai-engine.js?v=2"></script>
+  <script src="js/charts.js?v=2"></script>
+  <script src="js/app.js?v=2"></script>
+</body>
+</html>
