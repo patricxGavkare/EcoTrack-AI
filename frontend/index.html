@@ -850,14 +850,17 @@ GET  http://127.0.0.1:5000/api/health      -> Health check
     </div>
   </div>
 
+  <!-- ========================================================================= -->
+  <!-- 🔔 SECTION: TOAST NOTIFICATIONS & SCRIPTS                                -->
+  <!-- ========================================================================= -->
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
-  <!-- JavaScript Modules in Dependency Order -->
-  <script src="js/carbon-calc.js?v=2"></script>
-  <script src="js/mock-data.js?v=2"></script>
-  <script src="js/ai-engine.js?v=2"></script>
-  <script src="js/charts.js?v=2"></script>
-  <script src="js/app.js?v=2"></script>
+  <!-- JavaScript Global Engines & Modular Application Controller -->
+  <script src="js/carbon-calc.js"></script>
+  <script src="js/mock-data.js"></script>
+  <script src="js/ai-engine.js"></script>
+  <script src="js/charts.js"></script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
