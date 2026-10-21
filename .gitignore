@@ -32,6 +32,7 @@ config.local.json
 # 5. Database local files
 *.sqlite3
 *.db
+backend/data/ecotrack.db
 
 # 6. IDE / Editor settings
 .idea/

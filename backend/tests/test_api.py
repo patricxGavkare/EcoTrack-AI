@@ -1,21 +1,81 @@
 import os
 import sys
 import json
+import sqlite3
+import tempfile
 import unittest
 
 # Ensure backend directory is in sys.path so app can be imported
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app import app
+from db.database import init_db, get_connection
 
 class TestEcoTrackAPI(unittest.TestCase):
     def setUp(self):
+        # Create an isolated temporary database for each test
+        self.temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self.temp_db.close()
         self.app = app
         self.app.testing = True
+        self.app.config["DATABASE_PATH"] = self.temp_db.name
+        init_db(self.temp_db.name)
         self.client = self.app.test_client()
 
+    def tearDown(self):
+        # Clean up temporary database file
+        if hasattr(self, "temp_db") and os.path.exists(self.temp_db.name):
+            try:
+                os.remove(self.temp_db.name)
+            except Exception:
+                pass
+
     # -------------------------------------------------------------------------
-    # Positive / Valid Endpoints Tests
+    # STEP 0: Security & Static File Routing Tests
+    # -------------------------------------------------------------------------
+
+    def test_static_index_html(self):
+        """GET / returns 200 with text/html content type."""
+        res = self.client.get("/")
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.headers.get("Content-Type", "").startswith("text/html"))
+        self.assertIn(b"EcoTrack", res.data)
+        res.close()
+
+    def test_static_js_app(self):
+        """GET /js/app.js returns 200 with text/javascript content type."""
+        res = self.client.get("/js/app.js")
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.headers.get("Content-Type", "").startswith("text/javascript"))
+        res.close()
+
+    def test_static_css_styles(self):
+        """GET /css/styles.css returns 200 with text/css content type."""
+        res = self.client.get("/css/styles.css")
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.headers.get("Content-Type", "").startswith("text/css"))
+        res.close()
+
+    def test_traversal_dot_dot_slash(self):
+        """GET /../backend/app.py must NOT return the file contents (expect 404 or 400)."""
+        res = self.client.get("/../backend/app.py")
+        self.assertIn(res.status_code, [400, 404])
+        self.assertNotIn(b"EcoTrack AI - Backend Python Server", res.data)
+
+    def test_traversal_encoded_dots(self):
+        """GET /%2e%2e/backend/app.py must NOT return the file contents (expect 404 or 400)."""
+        res = self.client.get("/%2e%2e/backend/app.py")
+        self.assertIn(res.status_code, [400, 404])
+        self.assertNotIn(b"EcoTrack AI - Backend Python Server", res.data)
+
+    def test_traversal_encoded_backslash(self):
+        """GET /..%5Cbackend%5Capp.py must NOT return the file contents (expect 404 or 400)."""
+        res = self.client.get("/..%5Cbackend%5Capp.py")
+        self.assertIn(res.status_code, [400, 404])
+        self.assertNotIn(b"EcoTrack AI - Backend Python Server", res.data)
+
+    # -------------------------------------------------------------------------
+    # Baseline Endpoints Tests (Health, Factors, Config)
     # -------------------------------------------------------------------------
 
     def test_health(self):
@@ -62,6 +122,10 @@ class TestEcoTrackAPI(unittest.TestCase):
         self.assertIn("limits", data)
         self.assertEqual(data["limits"]["min_history_points"], 2)
         self.assertEqual(data["limits"]["max_history_points"], 365)
+
+    # -------------------------------------------------------------------------
+    # Calculation, Prediction & Recommendations Tests
+    # -------------------------------------------------------------------------
 
     def test_valid_calculate(self):
         """POST /api/calculate with valid payload should compute CO2e accurately."""
@@ -127,10 +191,6 @@ class TestEcoTrackAPI(unittest.TestCase):
         data = res.get_json()
         self.assertEqual(data["status"], "success")
         self.assertEqual(data["dominantCategory"], "transport")
-
-    # -------------------------------------------------------------------------
-    # Failure Cases (Step 4 exact assertions)
-    # -------------------------------------------------------------------------
 
     def test_calculate_amount_abc(self):
         """amount as a string 'abc' returns 400."""
@@ -259,6 +319,182 @@ class TestEcoTrackAPI(unittest.TestCase):
         self.assertEqual(res.status_code, 404)
         self.assertIn("error", res.get_json())
 
+    # -------------------------------------------------------------------------
+    # STEP 3: Database Activities & Summary Tests
+    # -------------------------------------------------------------------------
+
+    def test_create_then_list_activities(self):
+        """POST /api/activities creates an activity, then GET /api/activities lists it."""
+        payload = {
+            "category": "transport",
+            "subType": "car_petrol",
+            "amount": 25,
+            "loggedAt": "2026-10-21T10:00:00"
+        }
+        res_post = self.client.post("/api/activities", json=payload)
+        self.assertEqual(res_post.status_code, 201)
+        created = res_post.get_json()
+        self.assertIn("id", created)
+        self.assertEqual(created["co2e"], 4.8)
+
+        res_list = self.client.get("/api/activities")
+        self.assertEqual(res_list.status_code, 200)
+        activities = res_list.get_json()
+        self.assertIsInstance(activities, list)
+        self.assertEqual(len(activities), 1)
+        self.assertEqual(activities[0]["id"], created["id"])
+        self.assertEqual(activities[0]["category"], "transport")
+        self.assertEqual(activities[0]["amount"], 25)
+
+    def test_create_then_delete_activity(self):
+        """POST /api/activities, then DELETE /api/activities/<id> removes it."""
+        payload = {"category": "electricity", "subType": "grid_standard", "amount": 10}
+        res_post = self.client.post("/api/activities", json=payload)
+        self.assertEqual(res_post.status_code, 201)
+        activity_id = res_post.get_json()["id"]
+
+        # Delete activity
+        res_del = self.client.delete(f"/api/activities/{activity_id}")
+        self.assertEqual(res_del.status_code, 200)
+        self.assertEqual(res_del.get_json(), {"deleted": activity_id})
+
+        # List should now be empty
+        res_list = self.client.get("/api/activities")
+        self.assertEqual(res_list.status_code, 200)
+        self.assertEqual(len(res_list.get_json()), 0)
+
+    def test_delete_missing_activity_404(self):
+        """DELETE non-existent activity returns 404 JSON error."""
+        res = self.client.delete("/api/activities/999999")
+        self.assertEqual(res.status_code, 404)
+        self.assertIn("error", res.get_json())
+
+    def test_activity_invalid_category_400(self):
+        """POST /api/activities with invalid category returns 400."""
+        payload = {"category": "spaceship", "subType": "car_petrol", "amount": 10}
+        res = self.client.post("/api/activities", json=payload)
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("error", res.get_json())
+
+    def test_activity_invalid_subtype_400(self):
+        """POST /api/activities with invalid subType returns 400."""
+        payload = {"category": "transport", "subType": "hyperdrive", "amount": 10}
+        res = self.client.post("/api/activities", json=payload)
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("error", res.get_json())
+
+    def test_activity_invalid_amount_400(self):
+        """POST /api/activities with invalid amount returns 400."""
+        # String amount
+        res1 = self.client.post("/api/activities", json={"category": "transport", "subType": "car_petrol", "amount": "abc"})
+        self.assertEqual(res1.status_code, 400)
+        # Negative amount
+        res2 = self.client.post("/api/activities", json={"category": "transport", "subType": "car_petrol", "amount": -10})
+        self.assertEqual(res2.status_code, 400)
+        # Boolean amount
+        res3 = self.client.post("/api/activities", json={"category": "transport", "subType": "car_petrol", "amount": True})
+        self.assertEqual(res3.status_code, 400)
+        # Null amount
+        res4 = self.client.post("/api/activities", json={"category": "transport", "subType": "car_petrol", "amount": None})
+        self.assertEqual(res4.status_code, 400)
+
+    def test_client_sent_co2e_ignored(self):
+        """Client-sent co2e is ignored; server calculates actual value from emission factors."""
+        payload = {
+            "category": "transport",
+            "subType": "car_petrol",
+            "amount": 10,
+            "co2e": 99999.0  # Bogus client value
+        }
+        res = self.client.post("/api/activities", json=payload)
+        self.assertEqual(res.status_code, 201)
+        data = res.get_json()
+        self.assertEqual(data["co2e"], 1.92)  # 10 * 0.192 = 1.92
+        self.assertNotEqual(data["co2e"], 99999.0)
+
+    def test_activities_limit_zero_400(self):
+        """GET /api/activities?limit=0 returns 400."""
+        res = self.client.get("/api/activities?limit=0")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("error", res.get_json())
+
+    def test_activities_limit_negative_400(self):
+        """GET /api/activities?limit=-1 returns 400."""
+        res = self.client.get("/api/activities?limit=-1")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("error", res.get_json())
+
+    def test_activities_limit_non_int_400(self):
+        """GET /api/activities?limit=x returns 400."""
+        res = self.client.get("/api/activities?limit=x")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("error", res.get_json())
+
+    def test_activities_limit_above_max_400(self):
+        """GET /api/activities with limit exceeding config max (500) returns 400."""
+        res = self.client.get("/api/activities?limit=501")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("error", res.get_json())
+
+    def test_activities_category_filter(self):
+        """GET /api/activities?category=transport returns only matching category records."""
+        self.client.post("/api/activities", json={"category": "transport", "subType": "car_petrol", "amount": 10})
+        self.client.post("/api/activities", json={"category": "food", "subType": "meal_vegetarian", "amount": 2})
+
+        # Filter transport
+        res_t = self.client.get("/api/activities?category=transport")
+        self.assertEqual(res_t.status_code, 200)
+        items_t = res_t.get_json()
+        self.assertEqual(len(items_t), 1)
+        self.assertEqual(items_t[0]["category"], "transport")
+
+        # Invalid category filter returns 400
+        res_inv = self.client.get("/api/activities?category=nonexistent")
+        self.assertEqual(res_inv.status_code, 400)
+
+    def test_summary_continuity_zero_days(self):
+        """GET /api/summary?days=7 returns continuous 7 days with zero totals when empty."""
+        res = self.client.get("/api/summary?days=7")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(len(data), 7)
+        for day in data:
+            self.assertIn("date", day)
+            self.assertIn("total", day)
+            self.assertEqual(day["total"], 0.0)
+            self.assertEqual(day["transport"], 0.0)
+            self.assertEqual(day["electricity"], 0.0)
+
+    def test_summary_days_zero_400(self):
+        """GET /api/summary?days=0 returns 400."""
+        res = self.client.get("/api/summary?days=0")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("error", res.get_json())
+
+    def test_summary_days_above_max_400(self):
+        """GET /api/summary?days=9999 returns 400."""
+        res = self.client.get("/api/summary?days=9999")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("error", res.get_json())
+
+    def test_sql_injection_subtype(self):
+        """SQL injection attempt in subType returns 400 and does NOT compromise table."""
+        injection_payload = {
+            "category": "transport",
+            "subType": "x'; DROP TABLE activities;--",
+            "amount": 10
+        }
+        res = self.client.post("/api/activities", json=injection_payload)
+        self.assertEqual(res.status_code, 400)
+
+        # Verify table activities still exists and is completely operational
+        conn = get_connection(self.app.config["DATABASE_PATH"])
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='activities'")
+        table = cur.fetchone()
+        conn.close()
+        self.assertIsNotNone(table)
+        self.assertEqual(table["name"], "activities")
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,6 +7,7 @@ What this file does:
 2. Uses scientific carbon emission factors (IPCC/DEFRA) to calculate CO2e.
 3. Uses Scikit-learn (Linear Regression) to predict future carbon trends.
 4. Returns the results back as JSON so the website charts can display them.
+5. Persists and aggregates logged activities via local SQLite database.
 =============================================================================
 """
 
@@ -21,6 +22,15 @@ from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 import numpy as np
 from sklearn.linear_model import LinearRegression
+
+from db.database import (
+    init_db,
+    insert_activity,
+    list_activities,
+    delete_activity,
+    daily_totals,
+    get_default_db_path
+)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -46,12 +56,23 @@ RECOMMENDATIONS_DATA = load_json_file("recommendations.json")
 
 # Ensure .js files are served with the proper JavaScript MIME type
 mimetypes.add_type('text/javascript', '.js')
+mimetypes.add_type('text/css', '.css')
 
 # Create Flask app without default catch-all static rule
 app = Flask(__name__, static_folder=None)
 
 # Enable CORS: This allows your frontend (HTML/JS) to talk to this Python server
 CORS(app)
+
+def get_db_path():
+    """Resolves active database file path, honoring test overrides in app.config."""
+    if "DATABASE_PATH" in app.config and app.config["DATABASE_PATH"]:
+        return app.config["DATABASE_PATH"]
+    rel_path = CONFIG.get("database", {}).get("path", "data/ecotrack.db")
+    return os.path.abspath(os.path.join(BASE_DIR, rel_path))
+
+# Automatically initialize database at startup
+init_db(get_db_path())
 
 def parse_json_object():
     """Validates that incoming POST request has a non-empty JSON object body."""
@@ -102,7 +123,7 @@ def handle_unhandled_exception(error):
     raise error
 
 # ===========================================================================
-# 🌐 STATIC AND DASHBOARD ROUTES
+# 🌐 STATIC AND DASHBOARD ROUTES (send_from_directory prevents ../ traversal)
 # ===========================================================================
 
 @app.route("/", methods=["GET"])
@@ -147,6 +168,7 @@ def get_config():
     """Returns benchmarks, predict weights, and calculation/prediction limits."""
     pred_conf = CONFIG.get("predict", {})
     calc_conf = CONFIG.get("calculate", {})
+    db_conf = CONFIG.get("database", {})
     return jsonify({
         "benchmarks": CONFIG.get("benchmarks", {}),
         "predict_weights": pred_conf.get("modifier_weights", {}),
@@ -159,9 +181,15 @@ def get_config():
             "max_modifier": pred_conf.get("max_modifier"),
             "forecast_days": pred_conf.get("forecast_days"),
             "baseline_floor_kg": pred_conf.get("baseline_floor_kg"),
-            "optimized_floor_kg": pred_conf.get("optimized_floor_kg")
+            "optimized_floor_kg": pred_conf.get("optimized_floor_kg"),
+            "default_list_limit": db_conf.get("default_list_limit"),
+            "max_list_limit": db_conf.get("max_list_limit")
         },
-        "recommendations": CONFIG.get("recommendations", {})
+        "recommendations": CONFIG.get("recommendations", {}),
+        "database": {
+            "default_list_limit": db_conf.get("default_list_limit"),
+            "max_list_limit": db_conf.get("max_list_limit")
+        }
     })
 
 # 4. Carbon Calculation URL: Calculates CO2e using Activity Amount * Factor
@@ -176,7 +204,7 @@ def calculate_carbon():
         return jsonify({"error": err}), 400
 
     category = data.get("category")
-    sub_type = data.get("subType")
+    sub_type = data.get("subType") if "subType" in data else data.get("sub_type")
     amount = data.get("amount")
 
     if not isinstance(category, str) or not isinstance(sub_type, str):
@@ -214,7 +242,140 @@ def calculate_carbon():
         "formula": f"{amount} × {factor} = {co2e} kg CO2e"
     })
 
-# 5. Machine Learning Prediction URL: Uses Scikit-learn to forecast future trend
+# 5. Activity Logging & Management URLs
+@app.route("/api/activities", methods=["POST"])
+def create_activity():
+    """
+    Logs an activity into SQLite. The server calculates co2e using emission factors.
+    Returns 201 with saved row including id and co2e.
+    """
+    data, err = parse_json_object()
+    if err:
+        return jsonify({"error": err}), 400
+
+    category = data.get("category")
+    sub_type = data.get("subType") if "subType" in data else data.get("sub_type")
+    amount = data.get("amount")
+
+    if not isinstance(category, str) or not isinstance(sub_type, str):
+        return jsonify({"error": "Fields 'category' and 'subType' must be strings"}), 400
+
+    categories = EMISSION_FACTORS.get("categories", {})
+    if category not in categories:
+        valid_cats = sorted(categories.keys())
+        return jsonify({"error": f"Unknown category '{category}'. Valid categories: {valid_cats}"}), 400
+
+    if sub_type not in categories[category]:
+        valid_subtypes = sorted(categories[category].keys())
+        return jsonify({"error": f"Unknown subType '{sub_type}'. Valid subTypes for '{category}': {valid_subtypes}"}), 400
+
+    calc_conf = CONFIG["calculate"]
+    min_amount = calc_conf["min_amount"]
+    max_amount = calc_conf["max_amount"]
+
+    if amount is None or isinstance(amount, bool) or not isinstance(amount, (int, float)) or math.isnan(amount) or math.isinf(amount):
+        return jsonify({"error": "Field 'amount' must be a real number"}), 400
+
+    if amount < min_amount or amount > max_amount:
+        return jsonify({"error": f"Amount must be between {min_amount} and {max_amount}"}), 400
+
+    # Optional loggedAt timestamp (defaults to current time)
+    logged_at_raw = data.get("loggedAt") if "loggedAt" in data else data.get("logged_at")
+    if logged_at_raw is not None:
+        if not isinstance(logged_at_raw, str):
+            return jsonify({"error": "Field 'loggedAt' must be a string"}), 400
+        try:
+            datetime.datetime.fromisoformat(logged_at_raw.replace("Z", "+00:00"))
+            logged_at = logged_at_raw
+        except Exception:
+            return jsonify({"error": "Field 'loggedAt' must be a valid ISO 8601 string"}), 400
+    else:
+        logged_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    factor_entry = categories[category][sub_type]
+    factor = factor_entry["factor"] if isinstance(factor_entry, dict) else factor_entry
+    co2e = round(amount * factor, 3)
+
+    saved_row = insert_activity(
+        category=category,
+        sub_type=sub_type,
+        amount=amount,
+        co2e=co2e,
+        logged_at=logged_at,
+        db_path=get_db_path()
+    )
+
+    return jsonify(saved_row), 201
+
+@app.route("/api/activities", methods=["GET"])
+def get_activities():
+    """
+    Returns logged activities newest first, with optional limit and category filters.
+    """
+    db_conf = CONFIG.get("database", {})
+    default_limit = db_conf.get("default_list_limit", 50)
+    max_limit = db_conf.get("max_list_limit", 500)
+
+    raw_limit = request.args.get("limit")
+    if raw_limit is not None:
+        try:
+            limit = int(raw_limit)
+            if str(limit) != raw_limit.strip():
+                return jsonify({"error": "Query parameter 'limit' must be an integer"}), 400
+        except (ValueError, TypeError):
+            return jsonify({"error": "Query parameter 'limit' must be an integer"}), 400
+        if limit < 1 or limit > max_limit:
+            return jsonify({"error": f"Query parameter 'limit' must be between 1 and {max_limit}"}), 400
+    else:
+        limit = default_limit
+
+    category = request.args.get("category")
+    if category is not None:
+        categories = EMISSION_FACTORS.get("categories", {})
+        if category not in categories:
+            valid_cats = sorted(categories.keys())
+            return jsonify({"error": f"Unknown category '{category}'. Valid categories: {valid_cats}"}), 400
+
+    activities = list_activities(limit=limit, category=category, db_path=get_db_path())
+    return jsonify(activities), 200
+
+@app.route("/api/activities/<int:activity_id>", methods=["DELETE"])
+def remove_activity(activity_id):
+    """
+    Deletes an activity by ID. Returns 200 with {"deleted": activity_id} or 404 if missing.
+    """
+    deleted = delete_activity(activity_id, db_path=get_db_path())
+    if not deleted:
+        return jsonify({"error": f"Activity with id {activity_id} not found"}), 404
+    return jsonify({"deleted": activity_id}), 200
+
+# 6. Activity Summary (Daily Aggregation across all categories)
+@app.route("/api/summary", methods=["GET"])
+def get_summary():
+    """
+    Returns continuous daily totals for the last N days (chronological order)
+    with total and individual category totals.
+    """
+    pred_conf = CONFIG.get("predict", {})
+    max_days = pred_conf.get("max_history_points", 365)
+
+    raw_days = request.args.get("days")
+    if raw_days is not None:
+        try:
+            days = int(raw_days)
+            if str(days) != raw_days.strip():
+                return jsonify({"error": "Query parameter 'days' must be an integer"}), 400
+        except (ValueError, TypeError):
+            return jsonify({"error": "Query parameter 'days' must be an integer"}), 400
+        if days < 1 or days > max_days:
+            return jsonify({"error": f"Query parameter 'days' must be between 1 and {max_days}"}), 400
+    else:
+        days = 14
+
+    summary_list = daily_totals(days=days, db_path=get_db_path())
+    return jsonify(summary_list), 200
+
+# 7. Machine Learning Prediction URL: Uses Scikit-learn to forecast future trend
 @app.route("/api/predict", methods=["POST"])
 def predict_emissions():
     """
@@ -313,7 +474,7 @@ def predict_emissions():
         "projectedWeeklySavingsKg": total_savings
     })
 
-# 6. AI Personalized Recommendations based on category breakdown
+# 8. AI Personalized Recommendations based on category breakdown
 @app.route("/api/recommendations", methods=["POST"])
 def get_recommendations():
     """
