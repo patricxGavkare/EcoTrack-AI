@@ -35,5 +35,17 @@
     "path": "data/ecotrack.db",
     "default_list_limit": 50,
     "max_list_limit": 500
+  },
+  "lpg": {
+    "cylinder_kg": 14.2
+  },
+  "shopping": {
+    "spend_kg_per_inr": 0.004,
+    "note": "rough estimate, not sourced"
+  },
+  "monthly_logger": {
+    "enforce_window": false,
+    "open_from_day": 1,
+    "open_to_day": 5
   }
 }

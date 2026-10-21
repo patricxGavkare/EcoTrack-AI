@@ -17,15 +17,19 @@ export const AppState = {
     transportReduction: 0,
     electricityReduction: 0,
     dietReduction: 0
-  }
+  },
+  factors: null,
+  config: null,
+  isOnline: false,
+  isSampleData: false
 };
 
 export const QL = {
   step: 1,
-  transport: { val: null, factor: 0, label: '' },
+  transport: { key: null, val: null, factor: 0, label: '' },
   distance: { km: 0, label: '' },
   returnMultiplier: { val: 1, label: '' },
-  food: { co2: 0, label: '' },
+  food: { key: null, val: null, co2: 0, label: '' },
   totalTransportCO2: 0,
   totalFoodCO2: 0,
   grandTotal: 0
@@ -59,7 +63,10 @@ export function initDOM() {
     inputProfileEmail: document.getElementById('inputProfileEmail'),
     inputProfileCollege: document.getElementById('inputProfileCollege'),
 
-    // Global & Academic Viva
+    // Global & Academic Viva & Status Badges
+    headerStatusBadge: document.getElementById('headerStatusBadge'),
+    headerStatusDot: document.getElementById('headerStatusDot'),
+    headerStatusText: document.getElementById('headerStatusText'),
     apiStatusText: document.getElementById('apiStatusText'),
     statusDot: document.getElementById('statusDot'),
     btnCloseViva: document.getElementById('btnCloseViva'),
@@ -77,18 +84,10 @@ export function initDOM() {
     weeklyTrendBadge: document.getElementById('weeklyTrendBadge'),
     userPointsValue: document.getElementById('userPointsValue'),
 
-    // Activity Logger
-    categoryTabsNav: document.getElementById('categoryTabsNav'),
-    loggerForm: document.getElementById('loggerForm'),
-    subTypeSelect: document.getElementById('subTypeSelect'),
-    amountInput: document.getElementById('amountInput'),
-    amountLabel: document.getElementById('amountLabel'),
-    unitLabel: document.getElementById('unitLabel'),
-    factorNote: document.getElementById('factorNote'),
-    formulaEquation: document.getElementById('formulaEquation'),
-    formulaResult: document.getElementById('formulaResult'),
-
-    // AI & Predictions
+    // Trend & AI & Predictions
+    trendChartSubtitle: document.getElementById('trendChartSubtitle'),
+    predictionModelBadge: document.getElementById('predictionModelBadge'),
+    predictionModelSubtitle: document.getElementById('predictionModelSubtitle'),
     aiBehaviorSummary: document.getElementById('aiBehaviorSummary'),
     aiRecommendationsGrid: document.getElementById('aiRecommendationsGrid'),
     sliderTransport: document.getElementById('sliderTransport'),

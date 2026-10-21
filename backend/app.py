@@ -189,7 +189,10 @@ def get_config():
         "database": {
             "default_list_limit": db_conf.get("default_list_limit"),
             "max_list_limit": db_conf.get("max_list_limit")
-        }
+        },
+        "lpg": CONFIG.get("lpg", {}),
+        "shopping": CONFIG.get("shopping", {}),
+        "monthly_logger": CONFIG.get("monthly_logger", {})
     })
 
 # 4. Carbon Calculation URL: Calculates CO2e using Activity Amount * Factor
@@ -290,7 +293,7 @@ def create_activity():
         except Exception:
             return jsonify({"error": "Field 'loggedAt' must be a valid ISO 8601 string"}), 400
     else:
-        logged_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        logged_at = datetime.datetime.now().astimezone().isoformat()
 
     factor_entry = categories[category][sub_type]
     factor = factor_entry["factor"] if isinstance(factor_entry, dict) else factor_entry
@@ -530,7 +533,7 @@ if __name__ == "__main__":
     debug = bool(server_conf["debug"])
 
     print("==================================================================")
-    print(f"🌿 EcoTrack AI Backend starting on http://{host}:{port}")
+    print(f"EcoTrack AI Backend starting on http://{host}:{port}")
     print("Flask + Scikit-Learn + NumPy")
     print("==================================================================")
     app.run(host=host, port=port, debug=debug)

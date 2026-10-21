@@ -122,6 +122,12 @@ class TestEcoTrackAPI(unittest.TestCase):
         self.assertIn("limits", data)
         self.assertEqual(data["limits"]["min_history_points"], 2)
         self.assertEqual(data["limits"]["max_history_points"], 365)
+        self.assertIn("lpg", data)
+        self.assertIn("shopping", data)
+        self.assertIn("monthly_logger", data)
+        self.assertEqual(data["lpg"]["cylinder_kg"], 14.2)
+        self.assertEqual(data["shopping"]["spend_kg_per_inr"], 0.004)
+        self.assertFalse(data["monthly_logger"]["enforce_window"])
 
     # -------------------------------------------------------------------------
     # Calculation, Prediction & Recommendations Tests
@@ -495,6 +501,56 @@ class TestEcoTrackAPI(unittest.TestCase):
         conn.close()
         self.assertIsNotNone(table)
         self.assertEqual(table["name"], "activities")
+
+    def test_activity_timezone_bucketing(self):
+        """2026-10-21T01:30:00+05:30 and 2026-10-21T23:30:00+05:30 both land on 2026-10-21."""
+        res1 = self.client.post("/api/activities", json={
+            "category": "transport",
+            "subType": "car_petrol",
+            "amount": 10,
+            "loggedAt": "2026-10-21T01:30:00+05:30"
+        })
+        self.assertEqual(res1.status_code, 201)
+        row1 = res1.get_json()
+        self.assertTrue(row1["logged_at"].startswith("2026-10-21"))
+
+        res2 = self.client.post("/api/activities", json={
+            "category": "transport",
+            "subType": "car_petrol",
+            "amount": 10,
+            "loggedAt": "2026-10-21T23:30:00+05:30"
+        })
+        self.assertEqual(res2.status_code, 201)
+        row2 = res2.get_json()
+        self.assertTrue(row2["logged_at"].startswith("2026-10-21"))
+
+        # Verify through summary endpoint that both land on 2026-10-21
+        res_sum = self.client.get("/api/summary?days=7")
+        self.assertEqual(res_sum.status_code, 200)
+        summary_days = {d["date"]: d for d in res_sum.get_json()}
+        if "2026-10-21" in summary_days:
+            self.assertEqual(summary_days["2026-10-21"]["total"], 3.84)
+            self.assertEqual(summary_days["2026-10-21"]["transport"], 3.84)
+
+    def test_activity_invalid_logged_at_400(self):
+        """Invalid loggedAt string returns 400 error."""
+        res_inv_str = self.client.post("/api/activities", json={
+            "category": "transport",
+            "subType": "car_petrol",
+            "amount": 10,
+            "loggedAt": "not-an-iso-date"
+        })
+        self.assertEqual(res_inv_str.status_code, 400)
+        self.assertIn("error", res_inv_str.get_json())
+
+        res_inv_type = self.client.post("/api/activities", json={
+            "category": "transport",
+            "subType": "car_petrol",
+            "amount": 10,
+            "loggedAt": 12345
+        })
+        self.assertEqual(res_inv_type.status_code, 400)
+        self.assertIn("error", res_inv_type.get_json())
 
 if __name__ == "__main__":
     unittest.main()

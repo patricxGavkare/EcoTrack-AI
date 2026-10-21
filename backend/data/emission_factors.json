@@ -72,6 +72,15 @@
         "note": "Zero tailpipe emissions",
         "source": null,
         "verified": false
+      },
+      "auto_rickshaw": {
+        "key": "auto_rickshaw",
+        "label": "Auto Rickshaw / Cab",
+        "factor": 0.145,
+        "unit": "km",
+        "note": "project estimate",
+        "source": null,
+        "verified": false
       }
     },
     "electricity": {
@@ -191,6 +200,33 @@
         "factor": 0.9,
         "unit": "meal",
         "note": "Grain, lentils & dairy meal",
+        "source": null,
+        "verified": false
+      },
+      "meal_eggs_dairy": {
+        "key": "meal_eggs_dairy",
+        "label": "Eggs / Dairy Meal",
+        "factor": 1.9,
+        "unit": "meal",
+        "note": "project estimate",
+        "source": null,
+        "verified": false
+      },
+      "meal_takeout": {
+        "key": "meal_takeout",
+        "label": "Ordered In / Takeout Meal",
+        "factor": 3.2,
+        "unit": "meal",
+        "note": "project estimate",
+        "source": null,
+        "verified": false
+      },
+      "meal_restaurant": {
+        "key": "meal_restaurant",
+        "label": "Restaurant Meal",
+        "factor": 2.5,
+        "unit": "meal",
+        "note": "project estimate",
         "source": null,
         "verified": false
       }

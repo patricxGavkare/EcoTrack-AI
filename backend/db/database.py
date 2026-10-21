@@ -142,7 +142,7 @@ def daily_totals(days=14, user_id=1, db_path=None):
     Returns continuous daily totals for the last N days (chronological order).
     Each day item has date, total, and one key per category.
     """
-    today = date.today()
+    today = datetime.now().astimezone().date()
     date_list = [(today - timedelta(days=i)).isoformat() for i in range(days - 1, -1, -1)]
     categories = get_known_categories()
 

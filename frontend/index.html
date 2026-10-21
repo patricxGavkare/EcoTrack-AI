@@ -43,6 +43,12 @@
       </div>
 
       <div class="header-actions">
+        <!-- Backend Connection Status Badge -->
+        <div class="api-status-badge" id="headerStatusBadge">
+          <span class="badge-dot" id="headerStatusDot"></span>
+          <span id="headerStatusText">Connecting...</span>
+        </div>
+
         <!-- Circular Profile Avatar Button (Chrome / Apple Style) -->
         <button class="profile-avatar-btn" id="btnProfileMenu" aria-label="Open profile and account menu">
           <span class="avatar-circle" id="headerAvatarCircle">P</span>
@@ -353,12 +359,12 @@
             <div class="ql-step-label">Step 1 of 4 · Transport</div>
             <h3 class="ql-question">How did you travel today? 🚗</h3>
             <div class="ql-mcq-grid" id="transportModeGrid">
-              <button class="ql-mcq-btn" data-val="walked" data-factor="0" data-label="Walked">🚶 Walked</button>
-              <button class="ql-mcq-btn" data-val="cycle" data-factor="0" data-label="Cycled">🚴 Cycled</button>
-              <button class="ql-mcq-btn" data-val="bus_public" data-factor="0.089" data-label="Bus / Metro">🚌 Bus / Metro</button>
-              <button class="ql-mcq-btn" data-val="two_wheeler" data-factor="0.113" data-label="2-Wheeler">🛵 2-Wheeler</button>
-              <button class="ql-mcq-btn" data-val="petrol_car" data-factor="0.192" data-label="Car">🚗 Car</button>
-              <button class="ql-mcq-btn" data-val="auto" data-factor="0.145" data-label="Cab / Auto">🚖 Cab / Auto</button>
+              <button class="ql-mcq-btn" data-key="bicycle_walk" data-label="Walked">🚶 Walked</button>
+              <button class="ql-mcq-btn" data-key="bicycle_walk" data-label="Cycled">🚴 Cycled</button>
+              <button class="ql-mcq-btn" data-key="bus_public" data-label="Bus / Metro">🚌 Bus / Metro</button>
+              <button class="ql-mcq-btn" data-key="bike_petrol" data-label="2-Wheeler">🛵 2-Wheeler</button>
+              <button class="ql-mcq-btn" data-key="car_petrol" data-label="Car">🚗 Car</button>
+              <button class="ql-mcq-btn" data-key="auto_rickshaw" data-label="Cab / Auto">🚖 Cab / Auto</button>
             </div>
             <div class="ql-custom-row">
               <button class="ql-custom-toggle" id="btnShowTransportCustom">✏️ I'll enter exact km myself</button>
@@ -440,12 +446,12 @@
             <div class="ql-step-label">Step 4 of 4 · Food & Diet</div>
             <h3 class="ql-question">What did you mostly eat today? 🍽️</h3>
             <div class="ql-mcq-grid" id="foodGrid">
-              <button class="ql-mcq-btn food-btn" data-co2="1.5" data-label="Full Vegetarian">🥦 Full Veg</button>
-              <button class="ql-mcq-btn food-btn" data-co2="1.9" data-label="Eggs / Dairy">🍳 Eggs / Dairy</button>
-              <button class="ql-mcq-btn food-btn" data-co2="2.8" data-label="Chicken / Fish">🍗 Chicken / Fish</button>
-              <button class="ql-mcq-btn food-btn" data-co2="5.0" data-label="Red Meat">🥩 Red Meat</button>
-              <button class="ql-mcq-btn food-btn" data-co2="3.2" data-label="Ordered In / Zomato">🍕 Ordered In</button>
-              <button class="ql-mcq-btn food-btn" data-co2="2.5" data-label="Ate at Restaurant">🍽️ Restaurant</button>
+              <button class="ql-mcq-btn food-btn" data-key="meal_vegetarian" data-label="Full Vegetarian">🥦 Full Veg</button>
+              <button class="ql-mcq-btn food-btn" data-key="meal_eggs_dairy" data-label="Eggs / Dairy">🍳 Eggs / Dairy</button>
+              <button class="ql-mcq-btn food-btn" data-key="meal_chicken" data-label="Chicken / Fish">🍗 Chicken / Fish</button>
+              <button class="ql-mcq-btn food-btn" data-key="meal_meat" data-label="Red Meat">🥩 Red Meat</button>
+              <button class="ql-mcq-btn food-btn" data-key="meal_takeout" data-label="Ordered In / Zomato">🍕 Ordered In</button>
+              <button class="ql-mcq-btn food-btn" data-key="meal_restaurant" data-label="Ate at Restaurant">🍽️ Restaurant</button>
             </div>
             <div class="ql-nav-row">
               <button class="ql-btn-back" id="qlBack4">← Back</button>
@@ -557,7 +563,7 @@
 
               <!-- Q4: Shopping -->
               <div class="mq-group">
-                <div class="mq-label">🛍️ Shopping / purchases this month?</div>
+                <div class="mq-label">🛍️ Shopping / purchases this month? <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">(estimate)</span></div>
                 <div class="mq-options" id="mq4">
                   <button class="mq-btn" data-val="500" data-label="Essentials only">Essentials<span>Food, toiletries</span></button>
                   <button class="mq-btn" data-val="2000" data-label="Some extras">Some extras<span>1–2 items</span></button>
@@ -667,8 +673,9 @@
             <div class="chart-header">
               <div>
                 <h5 class="chart-title">7-Day Trajectory Forecast</h5>
-                <p class="panel-subtitle">Status Quo vs AI-Optimized Lifestyle</p>
+                <p class="panel-subtitle" id="predictionModelSubtitle">Status Quo vs AI-Optimized Lifestyle</p>
               </div>
+              <span class="trend-badge" id="predictionModelBadge">Local fallback</span>
             </div>
             <div class="chart-container-wrap">
               <canvas id="predictionChartCanvas"></canvas>
@@ -742,6 +749,7 @@
                 <th>Logged Amount</th>
                 <th>Emissions (kg CO₂e)</th>
                 <th>Points</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody id="activityTableBody">
@@ -788,34 +796,41 @@ Emission (kg CO₂e) = Activity Amount × Verified Emission Factor
         </div>
 
         <div class="viva-card-block">
-          <h4>🧠 Machine Learning & AI Components (Slide 1, 6)</h4>
+          <h4>🧠 Machine Learning & Architecture</h4>
           <ul>
-            <li><strong>Behavior Analysis:</strong> Analyzes category percentage shares and flags consumption anomalies using statistical deviation: <code>Anomalies = days > (mean + 1.25 × stdDev)</code>.</li>
-            <li><strong>Emission Predictor:</strong> Fits historical time series using Ordinary Least Squares (OLS) Linear Regression (<code>y = mx + c</code>, matching Scikit-learn's <code>LinearRegression()</code>) to forecast next 7-day trajectories.</li>
-            <li><strong>Recommendation Engine:</strong> Rule-based heuristic system targeting the user's primary emission contributor with quantifiable reduction calculations.</li>
+            <li><strong>Emission Predictor:</strong> Fits an Ordinary Least Squares (OLS) Linear Regression model (<code>y = mx + c</code>) dynamically using Scikit-learn's <code>LinearRegression</code> directly on the user's own logged historical daily totals (no pre-trained model or static weights). If the backend is unreachable, the browser's local engine performs the identical regression calculation.</li>
+            <li><strong>Data Persistence:</strong> SQLite relational database (<code>ecotrack.db</code>) stores activities with timestamp, category, amount, and server-calculated CO2e using strictly parameterized queries.</li>
+            <li><strong>Offline Fallback & Sync:</strong> If the Flask server is stopped or opened via <code>file://</code>, the frontend operates completely offline, queues logs with a <code>pending sync</code> tag in localStorage, and automatically syncs them to SQLite without duplicates once the server reconnects.</li>
+            <li><strong>Emission Factor Sources:</strong> Only Petrol Car (DEFRA), Diesel Car (DEFRA), and Grid Electricity (CEA / IPCC) carry scientific citations (verified: true). All other factors are domain project estimates (verified: false).</li>
           </ul>
         </div>
 
         <div class="viva-card-block">
-          <h4>🔌 Flask Backend Integration (Slide 6)</h4>
-          <p>The frontend is decoupled and ready to communicate with your Python Flask API:</p>
+          <h4>🔌 REST API Endpoints</h4>
+          <p>The frontend communicates with the Python Flask server via standard JSON endpoints with strict input validation:</p>
           <div class="viva-code-snippet">
-POST http://127.0.0.1:5000/api/calculate   -> Computes category CO2e
-POST http://127.0.0.1:5000/api/predict     -> Runs Scikit-learn model
-GET  http://127.0.0.1:5000/api/health      -> Health check
+GET    /api/health            -> Server heartbeat & status
+GET    /api/factors           -> Verified & estimated emission factors
+GET    /api/config            -> Benchmarks, weights, and limits
+POST   /api/activities        -> Saves activity to SQLite (computes CO2e)
+GET    /api/activities        -> Queries user activities (newest first)
+DELETE /api/activities/&lt;id&gt;   -> Deletes activity from SQLite
+GET    /api/summary?days=N    -> Continuous daily category totals
+POST   /api/predict           -> Scikit-learn LinearRegression forecast
+POST   /api/recommendations   -> Targeted reduction recommendations
           </div>
         </div>
 
         <div class="viva-card-block">
           <h4>❓ Top 3 Examiner Viva Questions & Answers</h4>
-          <p style="margin-bottom: 0.5rem;"><strong>Q1: Why do we need AI if carbon is calculated with simple formulas?</strong><br>
-          <em>Ans: The calculation is standard, but the AI is needed for behavioral pattern recognition, identifying emission anomalies, tailoring actionable recommendations with highest ROI, and predicting future trajectory based on current habits.</em></p>
+          <p style="margin-bottom: 0.5rem;"><strong>Q1: Why do we need ML if emissions use standard factors?</strong><br>
+          <em>Ans: Activity factors compute static historical footprints (Amount × Factor), but Scikit-learn Linear Regression dynamically models the user's emission velocity and rate of change, projecting a 7-day trajectory and simulating the exact quantitative impact of lifestyle habit modifications.</em></p>
           
           <p style="margin-bottom: 0.5rem;"><strong>Q2: What is the Unified Green Score?</strong><br>
           <em>Ans: It normalizes emissions onto an intuitive 0-100 scale benchmarked against the Paris Agreement 1.5°C climate target (4.1 kg/day) and national averages (9.8 kg/day).</em></p>
 
-          <p><strong>Q3: How are the ML models trained?</strong><br>
-          <em>Ans: In the Python Flask backend, Scikit-learn's LinearRegression and moving window regressors are trained on user historical log timestamps and category series, while behavior clustering groups user habits.</em></p>
+          <p><strong>Q3: How is the ML model trained?</strong><br>
+          <em>Ans: There is no pre-trained static dataset. The Scikit-learn LinearRegression model is fit on-the-fly per user directly over their own chronological daily emission log totals from SQLite (or browser fallback), guaranteeing predictions reflect personal habits.</em></p>
         </div>
 
       </div>

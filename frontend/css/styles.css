@@ -170,6 +170,37 @@ h1, h2, h3, h4, h5, h6 {
   position: relative;
 }
 
+/* API Status Badge */
+.api-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  transition: all 0.25s ease;
+  user-select: none;
+}
+.api-status-badge.offline {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.api-status-badge .badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px currentColor;
+}
+.api-status-badge.offline .badge-dot {
+  background: #f59e0b;
+}
+
 /* Circular Profile Avatar Button (Google Chrome & Apple Style) */
 .profile-avatar-btn {
   position: relative;

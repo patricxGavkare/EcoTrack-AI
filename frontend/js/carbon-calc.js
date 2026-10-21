@@ -22,7 +22,8 @@ const CarbonCalc = {
       bus_public: { label: 'City Bus', factor: 0.089, unit: 'km', note: 'Average bus passenger-km' },
       metro_train: { label: 'Metro / Local Train', factor: 0.035, unit: 'km', note: 'Electric urban rail passenger-km' },
       flight_domestic: { label: 'Domestic Flight', factor: 0.255, unit: 'km', note: 'Economy short haul including radiative forcing' },
-      bicycle_walk: { label: 'Bicycle / Walking', factor: 0.000, unit: 'km', note: 'Zero tailpipe emissions' }
+      bicycle_walk: { label: 'Bicycle / Walking', factor: 0.000, unit: 'km', note: 'Zero tailpipe emissions' },
+      auto_rickshaw: { label: 'Auto Rickshaw / Cab', factor: 0.145, unit: 'km', note: 'project estimate' }
     },
 
     // 2. Electricity (kg CO2e per kWh)
@@ -44,7 +45,10 @@ const CarbonCalc = {
       diet_vegan: { label: 'Vegan Diet (Daily)', factor: 2.90, unit: 'day', note: '100% plant-based meal plan' },
       meal_meat: { label: 'Single Red Meat Meal', factor: 3.30, unit: 'meal', note: 'Beef/Lamb meal portion' },
       meal_chicken: { label: 'Single Chicken/Poultry Meal', factor: 1.30, unit: 'meal', note: 'Poultry meal portion' },
-      meal_vegetarian: { label: 'Single Vegetarian Meal', factor: 0.90, unit: 'meal', note: 'Grain, lentils & dairy meal' }
+      meal_vegetarian: { label: 'Single Vegetarian Meal', factor: 0.90, unit: 'meal', note: 'Grain, lentils & dairy meal' },
+      meal_eggs_dairy: { label: 'Eggs / Dairy Meal', factor: 1.90, unit: 'meal', note: 'project estimate' },
+      meal_takeout: { label: 'Ordered In / Takeout Meal', factor: 3.20, unit: 'meal', note: 'project estimate' },
+      meal_restaurant: { label: 'Restaurant Meal', factor: 2.50, unit: 'meal', note: 'project estimate' }
     },
 
     // 4. Water Usage (kg CO2e per liter or habit duration)
