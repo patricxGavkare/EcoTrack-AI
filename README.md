@@ -56,24 +56,23 @@ Website/
 
 ## 🚀 How to Run the Project on Your Computer
 
-### 1. Running the Frontend (Instant View)
-You don't need to install anything to see the frontend:
-* Go into `frontend/` and **double click `index.html`** in your browser.
-* Or, if using VS Code, right-click `index.html` and select **"Open with Live Server"**.
+> **Note:** The frontend uses modern JavaScript ES modules (`import`/`export`), which require serving over HTTP/HTTPS. Do not double-click `index.html` directly from the filesystem (`file:///`), as browsers block ES modules due to CORS policy. The Flask backend serves both the API and the frontend dashboard seamlessly.
 
-### 2. Running the Python Backend (Optional for AI API)
-To start the Flask server:
 ```bash
-# 1. Open terminal and go to backend folder
+# 1. Activate your Python virtual environment (e.g. C:\venvs\ecotrack)
+C:\venvs\ecotrack\Scripts\activate
+
+# 2. Navigate to the backend folder
 cd backend
 
-# 2. Install required packages (first time only)
+# 3. Install required packages (first time only)
 pip install -r requirements.txt
 
-# 3. Start the server
+# 4. Start the Flask server
 python app.py
 ```
-The backend will run on `http://127.0.0.1:5000`. Once it is running, the frontend will automatically connect to it!
+
+Open your browser and navigate to **`http://127.0.0.1:5000`** to view the application.
 
 ---
 

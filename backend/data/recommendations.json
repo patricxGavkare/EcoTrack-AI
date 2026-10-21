@@ -1,0 +1,130 @@
+{
+  "categories": {
+    "transport": [
+      {
+        "id": "rec-transport-1",
+        "category": "transport",
+        "title": "Shift 2 Car Commutes to Metro",
+        "description": "Replace driving with metro transit for two weekly commutes to reduce tailpipe emissions.",
+        "saving_kg_per_month": 18.4,
+        "difficulty": "Easy"
+      },
+      {
+        "id": "rec-transport-2",
+        "category": "transport",
+        "title": "Carpool with Colleagues or Classmates",
+        "description": "Share rides for routine trips to cut per-person fuel consumption by half.",
+        "saving_kg_per_month": 12.5,
+        "difficulty": "Easy"
+      }
+    ],
+    "electricity": [
+      {
+        "id": "rec-electricity-1",
+        "category": "electricity",
+        "title": "Set Air Conditioner to 24°C",
+        "description": "Set AC thermostat to 24°C instead of cooler temperatures to optimize compressor efficiency.",
+        "saving_kg_per_month": 14.8,
+        "difficulty": "Easy"
+      },
+      {
+        "id": "rec-electricity-2",
+        "category": "electricity",
+        "title": "Switch to LED Lighting & Smart Power Strips",
+        "description": "Replace incandescent fixtures with LEDs and eliminate standby phantom power draw.",
+        "saving_kg_per_month": 8.2,
+        "difficulty": "Easy"
+      }
+    ],
+    "food": [
+      {
+        "id": "rec-food-1",
+        "category": "food",
+        "title": "Adopt Meatless Weekdays",
+        "description": "Substitute plant-based proteins or vegetarian meals on weekdays to reduce agricultural footprint.",
+        "saving_kg_per_month": 15.0,
+        "difficulty": "Medium"
+      },
+      {
+        "id": "rec-food-2",
+        "category": "food",
+        "title": "Plan Portions to Cut Food Waste",
+        "description": "Minimize cooked food spoilage through meal prep and proper refrigerated storage.",
+        "saving_kg_per_month": 7.5,
+        "difficulty": "Easy"
+      }
+    ],
+    "water": [
+      {
+        "id": "rec-water-1",
+        "category": "water",
+        "title": "Install Low-Flow Aerators & Shorten Showers",
+        "description": "Reduce shower duration to under 5 minutes and fit water-saving aerators on sink taps.",
+        "saving_kg_per_month": 6.0,
+        "difficulty": "Easy"
+      },
+      {
+        "id": "rec-water-2",
+        "category": "water",
+        "title": "Run Washing Machine with Full Cold-Water Loads",
+        "description": "Run clothes washers only with full loads using cold-water wash cycles to avoid water-heating energy.",
+        "saving_kg_per_month": 4.5,
+        "difficulty": "Easy"
+      }
+    ],
+    "waste": [
+      {
+        "id": "rec-waste-1",
+        "category": "waste",
+        "title": "Segregate Dry Recyclables at Source",
+        "description": "Divert paper, cardboard, clean plastics, and metal cans away from municipal landfills.",
+        "saving_kg_per_month": 5.2,
+        "difficulty": "Easy"
+      },
+      {
+        "id": "rec-waste-2",
+        "category": "waste",
+        "title": "Home Composting for Organic Kitchen Scraps",
+        "description": "Convert fruit and vegetable peels into aerobic garden compost instead of landfill waste.",
+        "saving_kg_per_month": 8.0,
+        "difficulty": "Medium"
+      }
+    ],
+    "shopping": [
+      {
+        "id": "rec-shopping-1",
+        "category": "shopping",
+        "title": "Adopt a 30-Day Delay Rule for Discretionary Items",
+        "description": "Pause impulse fast-fashion and non-essential consumer purchases by 30 days to curb consumption.",
+        "saving_kg_per_month": 11.0,
+        "difficulty": "Medium"
+      },
+      {
+        "id": "rec-shopping-2",
+        "category": "shopping",
+        "title": "Repair and Buy Refurbished Electronics",
+        "description": "Extend device lifecycles and buy certified refurbished electronics instead of brand new.",
+        "saving_kg_per_month": 9.5,
+        "difficulty": "Hard"
+      }
+    ],
+    "gas": [
+      {
+        "id": "rec-gas-1",
+        "category": "gas",
+        "title": "Use Pressure Cookers & Lidded Cookware",
+        "description": "Covering pots while boiling traps heat and cuts cooking gas consumption by up to 30%.",
+        "saving_kg_per_month": 6.5,
+        "difficulty": "Easy"
+      },
+      {
+        "id": "rec-gas-2",
+        "category": "gas",
+        "title": "Transition Daily Simmering to Induction Cooktop",
+        "description": "Shift electric water boiling and simmering to high-efficiency induction cooking.",
+        "saving_kg_per_month": 5.0,
+        "difficulty": "Medium"
+      }
+    ]
+  }
+}

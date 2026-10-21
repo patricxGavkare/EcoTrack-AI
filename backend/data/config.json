@@ -1,0 +1,34 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 5000,
+    "debug": true
+  },
+  "benchmarks": {
+    "paris_target_kg_per_day": 4.1,
+    "national_average_kg_per_day": 9.8,
+    "high_emitter_threshold": 14.5
+  },
+  "calculate": {
+    "min_amount": 0,
+    "max_amount": 100000
+  },
+  "predict": {
+    "forecast_days": 7,
+    "min_history_points": 2,
+    "max_history_points": 365,
+    "min_modifier": 0,
+    "max_modifier": 100,
+    "baseline_floor_kg": 1.5,
+    "optimized_floor_kg": 1.0,
+    "default_history": [9.5, 9.2, 8.8, 8.4, 7.9, 7.1, 6.8],
+    "modifier_weights": {
+      "transport": 0.30,
+      "electricity": 0.40,
+      "diet": 0.20
+    }
+  },
+  "recommendations": {
+    "default_category": "transport"
+  }
+}

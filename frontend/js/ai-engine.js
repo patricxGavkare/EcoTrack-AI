@@ -9,7 +9,9 @@
  */
 
 const AIEngine = {
-  flaskApiBase: 'http://127.0.0.1:5000/api',
+  flaskApiBase: (typeof window !== 'undefined' && window.location && (window.location.protocol === 'http:' || window.location.protocol === 'https:'))
+    ? '/api'
+    : 'http://127.0.0.1:5000/api',
   isBackendConnected: false,
 
   /**
