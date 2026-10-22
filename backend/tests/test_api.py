@@ -9,7 +9,7 @@ import unittest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app import app
-from db.database import init_db, get_connection
+from db.database import init_db, get_connection, insert_activity, list_activities, daily_totals
 
 class TestEcoTrackAPI(unittest.TestCase):
     def setUp(self):
@@ -551,6 +551,151 @@ class TestEcoTrackAPI(unittest.TestCase):
         })
         self.assertEqual(res_inv_type.status_code, 400)
         self.assertIn("error", res_inv_type.get_json())
+
+    def test_activity_invalid_period_400(self):
+        """POST /api/activities with invalid period returns 400 error."""
+        # Non-allowed string
+        res1 = self.client.post("/api/activities", json={
+            "category": "transport",
+            "subType": "car_petrol",
+            "amount": 10.0,
+            "period": "yearly"
+        })
+        self.assertEqual(res1.status_code, 400)
+        self.assertIn("error", res1.get_json())
+
+        # Numeric period
+        res2 = self.client.post("/api/activities", json={
+            "category": "transport",
+            "subType": "car_petrol",
+            "amount": 10.0,
+            "period": 123
+        })
+        self.assertEqual(res2.status_code, 400)
+        self.assertIn("error", res2.get_json())
+
+        # Boolean period
+        res3 = self.client.post("/api/activities", json={
+            "category": "transport",
+            "subType": "car_petrol",
+            "amount": 10.0,
+            "period": True
+        })
+        self.assertEqual(res3.status_code, 400)
+        self.assertIn("error", res3.get_json())
+
+    def test_monthly_activity_spreading_in_summary(self):
+        """Monthly 31 kg on 2026-10-21 contributes 1.0 kg/day to every day of October in /api/summary; daily entries unchanged."""
+        # 1. Post a daily activity on 2026-10-21: transport car_petrol 10km (1.92 kg CO2e)
+        res_daily = self.client.post("/api/activities", json={
+            "category": "transport",
+            "subType": "car_petrol",
+            "amount": 10.0,
+            "period": "daily",
+            "loggedAt": "2026-10-21T10:00:00+05:30"
+        })
+        self.assertEqual(res_daily.status_code, 201)
+        self.assertEqual(res_daily.get_json()["period"], "daily")
+        self.assertEqual(res_daily.get_json()["co2e"], 1.92)
+
+        # 2. Insert a monthly activity of 31 kg on 2026-10-21: category electricity
+        insert_activity(
+            category="electricity",
+            sub_type="grid_standard",
+            amount=43.66,
+            co2e=31.0,
+            logged_at="2026-10-21T12:00:00+05:30",
+            period="monthly",
+            db_path=self.temp_db.name
+        )
+
+        # 3. Call GET /api/summary?days=7
+        res_sum = self.client.get("/api/summary?days=7")
+        self.assertEqual(res_sum.status_code, 200)
+        summary = res_sum.get_json()
+        self.assertEqual(len(summary), 7)
+
+        # October has 31 days, so 31.0 / 31 = 1.0 kg/day for every day in October
+        for day in summary:
+            if day["date"].startswith("2026-10"):
+                # Electricity gets 1.0 kg/day from monthly spread
+                self.assertAlmostEqual(day["electricity"], 1.0, places=2)
+                if day["date"] == "2026-10-21":
+                    # Daily transport entry lands on 2026-10-21 only: 1.92 kg
+                    self.assertAlmostEqual(day["transport"], 1.92, places=2)
+                    self.assertAlmostEqual(day["total"], 2.92, places=2)
+                else:
+                    # Daily entry did not leak to other days
+                    self.assertAlmostEqual(day["transport"], 0.0, places=2)
+                    self.assertAlmostEqual(day["total"], 1.0, places=2)
+
+    def test_database_migration_adds_period_column(self):
+        """Old-schema database without period column is migrated to new schema without data loss."""
+        old_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        old_db.close()
+        old_db_path = old_db.name
+        try:
+            # 1. Create old table schema without 'period' column
+            conn = sqlite3.connect(old_db_path)
+            conn.execute("""
+                CREATE TABLE activities (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL DEFAULT 1,
+                    category TEXT NOT NULL,
+                    sub_type TEXT NOT NULL,
+                    amount REAL NOT NULL,
+                    co2e REAL NOT NULL,
+                    logged_at TEXT NOT NULL
+                )
+            """)
+            conn.execute("""
+                INSERT INTO activities (user_id, category, sub_type, amount, co2e, logged_at)
+                VALUES (1, 'transport', 'car_petrol', 10.0, 1.92, '2026-10-20T10:00:00+05:30')
+            """)
+            conn.execute("""
+                INSERT INTO activities (user_id, category, sub_type, amount, co2e, logged_at)
+                VALUES (1, 'food', 'meal_vegetarian', 2.0, 1.80, '2026-10-21T12:00:00+05:30')
+            """)
+            conn.commit()
+            conn.close()
+
+            # 2. Run init_db() which runs the migration
+            init_db(old_db_path)
+
+            # 3. Verify 'period' column exists in PRAGMA table_info
+            conn = get_connection(old_db_path)
+            cur = conn.cursor()
+            cur.execute("PRAGMA table_info(activities)")
+            cols = [r["name"] for r in cur.fetchall()]
+            self.assertIn("period", cols)
+            conn.close()
+
+            # 4. Verify existing rows have retained their data and their period defaults to 'daily'
+            acts = list_activities(db_path=old_db_path)
+            self.assertEqual(len(acts), 2)
+            for a in acts:
+                self.assertEqual(a["period"], "daily")
+            self.assertEqual(acts[0]["category"], "food")
+            self.assertEqual(acts[1]["category"], "transport")
+
+            # 5. Verify inserting a new row with period='monthly' works
+            new_row = insert_activity(
+                category="electricity",
+                sub_type="grid_standard",
+                amount=100.0,
+                co2e=71.0,
+                logged_at="2026-10-21T13:00:00+05:30",
+                period="monthly",
+                db_path=old_db_path
+            )
+            self.assertEqual(new_row["period"], "monthly")
+
+            acts_after = list_activities(db_path=old_db_path)
+            self.assertEqual(len(acts_after), 3)
+            self.assertEqual(acts_after[0]["period"], "monthly")
+        finally:
+            if os.path.exists(old_db_path):
+                os.remove(old_db_path)
 
 if __name__ == "__main__":
     unittest.main()

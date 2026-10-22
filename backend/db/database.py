@@ -9,6 +9,7 @@ All queries strictly use parameterized SQL with ? placeholders.
 import os
 import json
 import sqlite3
+import calendar
 from datetime import date, datetime, timedelta
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -35,7 +36,7 @@ def get_connection(db_path=None):
     return conn
 
 def init_db(db_path=None):
-    """Initializes database tables and indexes from schema.sql."""
+    """Initializes database tables and indexes from schema.sql and migrates schema if needed."""
     target_path = db_path or get_default_db_path()
     os.makedirs(os.path.dirname(target_path), exist_ok=True)
     with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
@@ -43,20 +44,27 @@ def init_db(db_path=None):
     conn = get_connection(target_path)
     try:
         conn.executescript(schema_sql)
+        # Migration: check if 'period' column exists in activities table
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(activities)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        if "period" not in columns:
+            cursor.execute("ALTER TABLE activities ADD COLUMN period TEXT NOT NULL DEFAULT 'daily'")
+            cursor.execute("UPDATE activities SET period = 'daily' WHERE period IS NULL OR period = ''")
         conn.commit()
     finally:
         conn.close()
 
-def insert_activity(category, sub_type, amount, co2e, logged_at, user_id=1, db_path=None):
+def insert_activity(category, sub_type, amount, co2e, logged_at, period="daily", user_id=1, db_path=None):
     """Inserts a single activity record and returns the created row dict."""
     conn = get_connection(db_path)
     try:
         cursor = conn.cursor()
         query = """
-            INSERT INTO activities (user_id, category, sub_type, amount, co2e, logged_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO activities (user_id, category, sub_type, amount, co2e, logged_at, period)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """
-        cursor.execute(query, (user_id, category, sub_type, amount, co2e, logged_at))
+        cursor.execute(query, (user_id, category, sub_type, amount, co2e, logged_at, period))
         conn.commit()
         row_id = cursor.lastrowid
         return {
@@ -69,7 +77,8 @@ def insert_activity(category, sub_type, amount, co2e, logged_at, user_id=1, db_p
             "amount": amount,
             "co2e": co2e,
             "logged_at": logged_at,
-            "loggedAt": logged_at
+            "loggedAt": logged_at,
+            "period": period
         }
     finally:
         conn.close()
@@ -81,7 +90,7 @@ def list_activities(limit=50, category=None, user_id=1, db_path=None):
         cursor = conn.cursor()
         if category:
             query = """
-                SELECT id, user_id, category, sub_type, amount, co2e, logged_at
+                SELECT id, user_id, category, sub_type, amount, co2e, logged_at, period
                 FROM activities
                 WHERE user_id = ? AND category = ?
                 ORDER BY logged_at DESC, id DESC
@@ -90,7 +99,7 @@ def list_activities(limit=50, category=None, user_id=1, db_path=None):
             cursor.execute(query, (user_id, category, limit))
         else:
             query = """
-                SELECT id, user_id, category, sub_type, amount, co2e, logged_at
+                SELECT id, user_id, category, sub_type, amount, co2e, logged_at, period
                 FROM activities
                 WHERE user_id = ?
                 ORDER BY logged_at DESC, id DESC
@@ -110,7 +119,8 @@ def list_activities(limit=50, category=None, user_id=1, db_path=None):
                 "amount": r["amount"],
                 "co2e": r["co2e"],
                 "logged_at": r["logged_at"],
-                "loggedAt": r["logged_at"]
+                "loggedAt": r["logged_at"],
+                "period": r["period"] if "period" in r.keys() else "daily"
             })
         return results
     finally:
@@ -141,6 +151,7 @@ def daily_totals(days=14, user_id=1, db_path=None):
     """
     Returns continuous daily totals for the last N days (chronological order).
     Each day item has date, total, and one key per category.
+    Spreads period='monthly' activities evenly across all days in that calendar month.
     """
     today = datetime.now().astimezone().date()
     date_list = [(today - timedelta(days=i)).isoformat() for i in range(days - 1, -1, -1)]
@@ -160,24 +171,68 @@ def daily_totals(days=14, user_id=1, db_path=None):
     conn = get_connection(db_path)
     try:
         cursor = conn.cursor()
-        query = """
+
+        # 1. Daily rows directly within the requested date window
+        query_daily = """
             SELECT SUBSTR(logged_at, 1, 10) AS log_date, category, SUM(co2e) AS cat_total
             FROM activities
-            WHERE user_id = ? AND SUBSTR(logged_at, 1, 10) >= ? AND SUBSTR(logged_at, 1, 10) <= ?
+            WHERE user_id = ? AND (period = 'daily' OR period IS NULL)
+              AND SUBSTR(logged_at, 1, 10) >= ? AND SUBSTR(logged_at, 1, 10) <= ?
             GROUP BY SUBSTR(logged_at, 1, 10), category
         """
-        cursor.execute(query, (user_id, date_list[0], date_list[-1]))
-        rows = cursor.fetchall()
-        for r in rows:
+        cursor.execute(query_daily, (user_id, date_list[0], date_list[-1]))
+        daily_rows = cursor.fetchall()
+        for r in daily_rows:
             log_date = r["log_date"]
             cat = r["category"]
             cat_total = float(r["cat_total"] or 0)
             if log_date in summary_map:
                 if cat in summary_map[log_date]:
-                    summary_map[log_date][cat] = round(cat_total, 3)
+                    summary_map[log_date][cat] += cat_total
                 else:
-                    summary_map[log_date][cat] = round(cat_total, 3)
-                summary_map[log_date]["total"] = round(summary_map[log_date]["total"] + cat_total, 3)
+                    summary_map[log_date][cat] = cat_total
+                summary_map[log_date]["total"] += cat_total
+
+        # 2. Monthly rows that overlap the calendar months in the requested window
+        start_month = date_list[0][:7]
+        end_month = date_list[-1][:7]
+        query_monthly = """
+            SELECT category, co2e, logged_at
+            FROM activities
+            WHERE user_id = ? AND period = 'monthly'
+              AND SUBSTR(logged_at, 1, 7) >= ? AND SUBSTR(logged_at, 1, 7) <= ?
+        """
+        cursor.execute(query_monthly, (user_id, start_month, end_month))
+        monthly_rows = cursor.fetchall()
+        for r in monthly_rows:
+            cat = r["category"]
+            co2e = float(r["co2e"] or 0)
+            logged_at = r["logged_at"]
+            if not logged_at or len(logged_at) < 7:
+                continue
+            try:
+                y = int(logged_at[:4])
+                m = int(logged_at[5:7])
+                num_days = calendar.monthrange(y, m)[1]
+            except Exception:
+                continue
+            if num_days <= 0:
+                continue
+            daily_share = co2e / num_days
+            for day_idx in range(1, num_days + 1):
+                day_str = f"{y:04d}-{m:02d}-{day_idx:02d}"
+                if day_str in summary_map:
+                    summary_map[day_str]["total"] += daily_share
+                    if cat in summary_map[day_str]:
+                        summary_map[day_str][cat] += daily_share
+                    else:
+                        summary_map[day_str][cat] = daily_share
+
+        # Final rounding to 3 decimal places
+        for d in date_list:
+            summary_map[d]["total"] = round(summary_map[d]["total"], 3)
+            for cat in categories:
+                summary_map[d][cat] = round(summary_map[d][cat], 3)
 
         return [summary_map[d] for d in date_list]
     finally:

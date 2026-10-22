@@ -252,6 +252,10 @@ export function renderActivityTable() {
       ? window.CarbonCalc.categoriesMeta[act.category] || { name: act.category, icon: '•' }
       : { name: act.category, icon: '•' };
 
+    const monthlyBadge = act.period === 'monthly'
+      ? `<span class="trend-badge" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-size: 0.65rem; padding: 2px 6px; margin-left: 6px;">Monthly</span>`
+      : '';
+
     const syncBadge = act.syncPending
       ? `<span class="trend-badge" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; font-size: 0.65rem; padding: 2px 6px; margin-left: 6px;">pending sync</span>`
       : '';
@@ -265,7 +269,7 @@ export function renderActivityTable() {
           <span>${catMeta.icon}</span> ${catMeta.name}
         </span>
       </td>
-      <td style="font-weight: 500; color: #ffffff;">${act.activityName || act.subTypeLabel || act.subType || ''}${syncBadge}</td>
+      <td style="font-weight: 500; color: #ffffff;">${act.activityName || act.subTypeLabel || act.subType || ''}${monthlyBadge}${syncBadge}</td>
       <td>${act.amount} ${act.unit || ''}</td>
       <td style="font-family: var(--font-heading); font-weight: 700; color: ${co2Val <= 0 ? 'var(--accent-mint)' : '#ffffff'};">
         ${co2Val > 0 ? '+' : ''}${co2Val.toFixed(2)} kg
@@ -280,14 +284,21 @@ export function renderActivityTable() {
 }
 
 /**
- * Render Today's Mini Activities List in the Logger Tab
+ * Render Today's Mini Activities List in the Logger Tab (Daily activities only)
  */
 export function renderTodayMiniList() {
   if (!DOM.todayLogsMiniList) return;
   DOM.todayLogsMiniList.innerHTML = '';
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const todayActs = AppState.activities.filter(a => a.date === todayStr);
+  // Show only period === 'daily' (exclude monthly entries)
+  const todayActs = AppState.activities.filter(a => a.date === todayStr && (a.period === 'daily' || !a.period));
+
+  const panelSubtitle = DOM.todayLogsMiniList.closest('.today-logs-card')?.querySelector('.panel-subtitle');
+  if (panelSubtitle) {
+    const dailyRunningTotal = todayActs.reduce((sum, a) => sum + (typeof a.co2e === 'number' ? a.co2e : (parseFloat(a.co2e) || 0)), 0);
+    panelSubtitle.textContent = `Running total for today: ${dailyRunningTotal.toFixed(2)} kg CO₂`;
+  }
 
   if (todayActs.length === 0) {
     DOM.todayLogsMiniList.innerHTML = `
@@ -396,6 +407,80 @@ export async function updateFuturePredictions() {
 }
 
 /**
+ * Build continuous local 14-day history spreading monthly entries across calendar month
+ */
+export function buildLocalHistory(days = 14) {
+  const today = new Date();
+  const dateList = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    dateList.push(d.toISOString().split('T')[0]);
+  }
+
+  const categories = ['transport', 'electricity', 'food', 'water', 'waste', 'shopping', 'gas'];
+  const summaryMap = {};
+  dateList.forEach(d => {
+    const entry = { date: d, total: 0 };
+    categories.forEach(cat => { entry[cat] = 0; });
+    summaryMap[d] = entry;
+  });
+
+  const acts = AppState.activities || [];
+  let hasRealData = false;
+
+  acts.forEach(act => {
+    const actDate = act.date || (act.loggedAt ? act.loggedAt.substring(0, 10) : null);
+    const co2Val = typeof act.co2e === 'number' ? act.co2e : (parseFloat(act.co2e) || 0);
+    if (!actDate || co2Val <= 0) return;
+
+    if (act.period === 'monthly') {
+      const y = parseInt(actDate.substring(0, 4), 10);
+      const m = parseInt(actDate.substring(5, 7), 10);
+      // Days in that calendar month: new Date(y, m, 0).getDate()
+      const daysInMonth = new Date(y, m, 0).getDate();
+      const dailyShare = co2Val / daysInMonth;
+
+      for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+        const dStr = `${y}-${String(m).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+        if (summaryMap[dStr]) {
+          summaryMap[dStr].total += dailyShare;
+          if (summaryMap[dStr][act.category] !== undefined) {
+            summaryMap[dStr][act.category] += dailyShare;
+          }
+          hasRealData = true;
+        }
+      }
+    } else {
+      if (summaryMap[actDate]) {
+        summaryMap[actDate].total += co2Val;
+        if (summaryMap[actDate][act.category] !== undefined) {
+          summaryMap[actDate][act.category] += co2Val;
+        }
+        hasRealData = true;
+      }
+    }
+  });
+
+  if (!hasRealData) {
+    return {
+      history: Storage.get('ecotrack_history', [...(window.MockData ? window.MockData.history14Days : [])]),
+      isSampleData: true
+    };
+  }
+
+  const history = dateList.map(d => {
+    const item = summaryMap[d];
+    item.total = parseFloat(item.total.toFixed(3));
+    categories.forEach(cat => {
+      item[cat] = parseFloat(item[cat].toFixed(3));
+    });
+    return item;
+  });
+  return { history, isSampleData: false };
+}
+
+/**
  * Refresh continuous 14-day summary from /api/summary, update charts & KPIs
  */
 export async function refreshSummaryAndCharts() {
@@ -414,8 +499,15 @@ export async function refreshSummaryAndCharts() {
         }
       }
     } catch (err) {
-      console.warn('API getSummary failed, keeping local history:', err);
+      console.warn('API getSummary failed, using local history spreading fallback:', err);
+      const local = buildLocalHistory(14);
+      AppState.history = local.history;
+      AppState.isSampleData = local.isSampleData;
     }
+  } else {
+    const local = buildLocalHistory(14);
+    AppState.history = local.history;
+    AppState.isSampleData = local.isSampleData;
   }
 
   // Update trend chart subtitle/badge based on sample vs real data

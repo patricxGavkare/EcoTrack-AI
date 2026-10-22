@@ -144,7 +144,8 @@ export async function qlSaveToHistory() {
           category: entry.category,
           subType: entry.subType,
           amount: entry.amount,
-          loggedAt: isoLoggedAt
+          loggedAt: isoLoggedAt,
+          period: 'daily'
         });
       } catch (err) {
         console.warn('POST /api/activities failed, storing with pending sync:', err);
@@ -164,6 +165,7 @@ export async function qlSaveToHistory() {
       co2e: (savedRow && typeof savedRow.co2e === 'number') ? savedRow.co2e : entry.co2e,
       pointsEarned: entry.pointsEarned,
       subTypeLabel: entry.subTypeLabel,
+      period: 'daily',
       syncPending: !savedRow
     };
 
@@ -215,6 +217,7 @@ export function initMonthlyLogger() {
   const day = today.getDate();
   const monthKey = `monthly_${today.getFullYear()}_${today.getMonth() + 1}`;
   const alreadyLogged = Storage.getRaw(monthKey);
+  const monthData = Storage.get(`${monthKey}_data`, null);
 
   const mConfig = (AppState.config && AppState.config.monthly_logger)
     ? AppState.config.monthly_logger
@@ -235,13 +238,38 @@ export function initMonthlyLogger() {
   const unlockedDiv = document.getElementById('monthlyUnlockedState');
   const lockSub = document.getElementById('monthlyLockSub');
   const lastLogged = document.getElementById('monthlyLastLogged');
+  const banner = document.getElementById('monthlyUnlockBanner') || document.querySelector('.monthly-unlock-banner');
+
+  // Remove "Log before the 5th" when enforce_window is false
+  if (banner) {
+    if (!mConfig.enforce_window) {
+      banner.textContent = '✅ Monthly utilities logger is open.';
+    } else {
+      const toDay = mConfig.open_to_day || 5;
+      banner.textContent = `✅ Monthly window is open! Log before the ${toDay}th.`;
+    }
+  }
+
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  let monthlySummaryText = '';
+  if (monthData && typeof monthData.total === 'number') {
+    const perDay = (monthData.total / daysInMonth).toFixed(1);
+    monthlySummaryText = `Monthly total: ${monthData.total} kg (about ${perDay} kg/day)`;
+  }
 
   if (alreadyLogged) {
     if (badge) { badge.textContent = '✅ Done'; badge.classList.add('open'); }
     if (lockedDiv) lockedDiv.classList.remove('hidden');
     if (unlockedDiv) unlockedDiv.classList.add('hidden');
-    if (lockSub) lockSub.textContent = 'Already logged for this month ✓';
-    if (lastLogged) lastLogged.textContent = `Logged on: ${alreadyLogged}`;
+    if (lockSub) {
+      lockSub.textContent = monthlySummaryText
+        ? `Already logged for this month ✓ · ${monthlySummaryText}`
+        : 'Already logged for this month ✓';
+    }
+    if (lastLogged) {
+      lastLogged.innerHTML = `<div>Logged on: ${alreadyLogged}</div>` +
+        (monthlySummaryText ? `<div style="font-weight: 600; color: var(--accent-mint); margin-top: 4px;">${monthlySummaryText}</div>` : '');
+    }
   } else if (isOpen) {
     if (badge) { badge.textContent = '🔓 Open Now!'; badge.classList.add('open'); }
     if (lockedDiv) lockedDiv.classList.add('hidden');
@@ -274,7 +302,8 @@ export async function syncPendingActivities() {
         category: act.category,
         subType: act.subType,
         amount: act.amount,
-        loggedAt: act.loggedAt || (act.date ? `${act.date}T12:00:00` : undefined)
+        loggedAt: act.loggedAt || (act.date ? `${act.date}T12:00:00` : undefined),
+        period: act.period || 'daily'
       };
       const res = await API.saveActivity(payload);
       if (res && res.id) {
@@ -502,12 +531,17 @@ export function setupQLListeners() {
     Storage.setRaw(monthKey, dateStr);
     Storage.set(`${monthKey}_data`, monthData);
 
+    // Singular/plural for cylinder
+    const cylinderText = lpgUnits === 1 ? '1 cylinder' : `${lpgUnits} cylinders`;
+    const lpgActivityName = isCylinders ? `LPG: ${cylinderText}` : `LPG: ${lpgUnits} kg`;
+    const lpgUnit = isCylinders ? (lpgUnits === 1 ? 'cylinder' : 'cylinders') : 'kg';
+
     // Save individual activities to backend / pending sync
     const monthlyItems = [
-      { category: 'electricity', subType: 'grid_standard', amount: elecUnits, co2e: electricCO2, label: `Electricity: ${elecUnits} kWh` },
-      { category: 'gas', subType: 'lpg_kg', amount: lpgKg, co2e: lpgCO2, label: `LPG: ${lpgUnits} ${isCylinders ? 'cylinders' : 'kg'}` },
-      { category: 'water', subType: 'tap_water', amount: waterUnits, co2e: waterCO2, label: `Water: ${waterUnits} L` },
-      { category: 'waste', subType: 'landfill_mixed', amount: wasteUnits, co2e: wasteCO2, label: `Waste: ${wasteUnits} kg` }
+      { category: 'electricity', subType: 'grid_standard', amount: elecUnits, co2e: electricCO2, label: `Electricity: ${elecUnits} kWh`, unit: 'kWh' },
+      { category: 'gas', subType: 'lpg_kg', amount: lpgKg, co2e: lpgCO2, label: lpgActivityName, unit: lpgUnit },
+      { category: 'water', subType: 'tap_water', amount: waterUnits, co2e: waterCO2, label: `Water: ${waterUnits} L`, unit: 'liters' },
+      { category: 'waste', subType: 'landfill_mixed', amount: wasteUnits, co2e: wasteCO2, label: `Waste: ${wasteUnits} kg`, unit: 'kg' }
     ];
 
     for (const item of monthlyItems) {
@@ -519,7 +553,8 @@ export function setupQLListeners() {
             category: item.category,
             subType: item.subType,
             amount: item.amount,
-            loggedAt: isoLoggedAt
+            loggedAt: isoLoggedAt,
+            period: 'monthly'
           });
         } catch (err) {
           console.warn('Monthly activity POST failed:', err);
@@ -535,10 +570,11 @@ export function setupQLListeners() {
         subType: item.subType,
         activityName: item.label,
         amount: item.amount,
-        unit: item.category === 'electricity' ? 'kWh' : item.category === 'gas' ? 'kg' : item.category === 'water' ? 'liters' : 'kg',
+        unit: item.unit,
         co2e: (savedRow && typeof savedRow.co2e === 'number') ? savedRow.co2e : item.co2e,
         pointsEarned: 15,
         subTypeLabel: item.label,
+        period: 'monthly',
         syncPending: !savedRow
       });
     }
@@ -549,14 +585,11 @@ export function setupQLListeners() {
     renderUserProfile();
 
     initMonthlyLogger();
-    showToast(`📅 Monthly report saved! ${monthlyTotal} kg CO₂ from utilities. +50 pts!`);
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const perDay = (monthlyTotal / daysInMonth).toFixed(1);
+    const monthlySummaryMsg = `Monthly total: ${monthlyTotal} kg (about ${perDay} kg/day)`;
+    showToast(`📅 Monthly report saved! ${monthlySummaryMsg}. +50 pts!`);
 
-    if (AppState.isOnline) {
-      await refreshSummaryAndCharts();
-    } else {
-      renderKPIs();
-      renderActivityTable();
-      renderTodayMiniList();
-    }
+    await refreshSummaryAndCharts();
   });
 }

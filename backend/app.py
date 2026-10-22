@@ -295,6 +295,13 @@ def create_activity():
     else:
         logged_at = datetime.datetime.now().astimezone().isoformat()
 
+    # Optional period (defaults to 'daily', allowed: 'daily', 'monthly')
+    period = data.get("period", "daily")
+    if period is None:
+        period = "daily"
+    if not isinstance(period, str) or period not in ("daily", "monthly"):
+        return jsonify({"error": "Field 'period' must be either 'daily' or 'monthly'"}), 400
+
     factor_entry = categories[category][sub_type]
     factor = factor_entry["factor"] if isinstance(factor_entry, dict) else factor_entry
     co2e = round(amount * factor, 3)
@@ -305,6 +312,7 @@ def create_activity():
         amount=amount,
         co2e=co2e,
         logged_at=logged_at,
+        period=period,
         db_path=get_db_path()
     )
 
