@@ -28,19 +28,15 @@ Desktop.ini
 .env
 .env.local
 config.local.json
+backend/data/secret_key
 
-# 5. Database local files
+# 5. Database local files & instance folder
 *.sqlite3
 *.db
-backend/data/ecotrack.db
+backend/instance/
 
 # 6. IDE / Editor settings
 .idea/
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
 
 # 7. Compressed archive files (keep the repo light)
 *.zip

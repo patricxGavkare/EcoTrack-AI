@@ -32,7 +32,7 @@
     "default_category": "transport"
   },
   "database": {
-    "path": "data/ecotrack.db",
+    "path": "instance/ecotrack.db",
     "default_list_limit": 50,
     "max_list_limit": 500
   },

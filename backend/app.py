@@ -68,8 +68,10 @@ def get_db_path():
     """Resolves active database file path, honoring test overrides in app.config."""
     if "DATABASE_PATH" in app.config and app.config["DATABASE_PATH"]:
         return app.config["DATABASE_PATH"]
-    rel_path = CONFIG.get("database", {}).get("path", "data/ecotrack.db")
-    return os.path.abspath(os.path.join(BASE_DIR, rel_path))
+    rel_path = CONFIG.get("database", {}).get("path", "instance/ecotrack.db")
+    target_path = os.path.abspath(os.path.join(BASE_DIR, rel_path))
+    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+    return target_path
 
 # Automatically initialize database at startup
 init_db(get_db_path())

@@ -63,8 +63,8 @@ export function qlBuildReceipt() {
   if (items) {
     items.innerHTML = '';
     const lines = [
-      { label: `🚗 ${QL.transport.label} — ${(rawKm).toFixed(1)} km`, val: QL.totalTransportCO2 },
-      { label: `🍽️ Food: ${QL.food.label}`, val: QL.totalFoodCO2 }
+      { label: `${QL.transport.label} — ${(rawKm).toFixed(1)} km`, val: QL.totalTransportCO2 },
+      { label: `Diet: ${QL.food.label}`, val: QL.totalFoodCO2 }
     ];
     lines.forEach(l => {
       const row = document.createElement('div');
@@ -85,14 +85,13 @@ export function qlBuildReceipt() {
   if (cmpContainer) {
     cmpContainer.innerHTML = '';
     const comparisons = [
-      { icon: '🌳', text: `= ${(QL.grandTotal / 21.7).toFixed(2)} trees' monthly CO₂ absorption` },
-      { icon: '💧', text: `= ${(QL.grandTotal * 1000).toLocaleString('en-IN')} litres of water wasted` },
-      { icon: '🏭', text: `India avg is ${natAvg} kg/day — you're at ${QL.grandTotal < natAvg ? '✅ below' : '⚠️ above'} average` }
+      { text: `Equivalent to ${(QL.grandTotal / 21.7).toFixed(2)} tree-months of sequestration` },
+      { text: `National baseline: ${natAvg} kg/day (${QL.grandTotal < natAvg ? 'below' : 'above'} average)` }
     ];
     comparisons.forEach(c => {
       const row = document.createElement('div');
       row.className = 'receipt-cmp-row';
-      row.innerHTML = `<span>${c.icon}</span><span>${c.text}</span>`;
+      row.innerHTML = `<span class="status-dot"></span><span>${c.text}</span>`;
       cmpContainer.appendChild(row);
     });
   }
@@ -271,15 +270,23 @@ export function initMonthlyLogger() {
         (monthlySummaryText ? `<div style="font-weight: 600; color: var(--accent-mint); margin-top: 4px;">${monthlySummaryText}</div>` : '');
     }
   } else if (isOpen) {
-    if (badge) { badge.textContent = '🔓 Open Now!'; badge.classList.add('open'); }
+    if (badge) { badge.textContent = 'Active'; badge.classList.add('open'); }
+    if (lockSub && !mConfig.enforce_window) lockSub.textContent = '';
     if (lockedDiv) lockedDiv.classList.add('hidden');
     if (unlockedDiv) unlockedDiv.classList.remove('hidden');
   } else {
     const toDay = mConfig.open_to_day || 5;
-    const nextFirst = new Date(today.getFullYear(), today.getMonth() + (day > toDay ? 1 : 0), mConfig.open_from_day || 1);
+    const fromDay = mConfig.open_from_day || 1;
+    const nextFirst = new Date(today.getFullYear(), today.getMonth() + (day > toDay ? 1 : 0), fromDay);
     const daysLeft = Math.ceil((nextFirst - today) / (1000 * 60 * 60 * 24));
-    if (badge) badge.textContent = '🔒 Locked';
-    if (lockSub) lockSub.textContent = `Opens in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} · Available ${mConfig.open_from_day || 1}st–${toDay}th`;
+    if (badge) badge.textContent = 'Window closed';
+    const lockTitle = document.querySelector('.monthly-lock-title');
+    if (lockTitle) lockTitle.textContent = `Opens on the ${fromDay}st`;
+    if (lockSub) {
+      lockSub.textContent = mConfig.enforce_window
+        ? `Opens in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} · Available ${fromDay}st–${toDay}th of every month`
+        : '';
+    }
     if (lockedDiv) lockedDiv.classList.remove('hidden');
     if (unlockedDiv) unlockedDiv.classList.add('hidden');
   }

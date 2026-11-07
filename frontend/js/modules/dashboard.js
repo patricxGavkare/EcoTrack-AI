@@ -1,6 +1,7 @@
 /**
  * Dashboard & Visual Rendering Module (dashboard.js)
- * Manages KPI updates, profile displays, recommendations cards, badges, activity tables, and charts.
+ * Manages KPI updates, profile displays, recommendation cards, badges, activity tables, and charts.
+ * Clean, unslop-compliant rendering with tabular monospace numbers and quiet status dots.
  */
 
 import { AppState, DOM } from './state.js';
@@ -14,14 +15,14 @@ export function showToast(msg) {
   if (!DOM.toastContainer) return;
   const toast = document.createElement('div');
   toast.className = 'toast';
-  toast.innerHTML = `<span>🌿</span> <span>${msg}</span>`;
+  toast.innerHTML = `<span class="status-dot"></span> <span>${msg}</span>`;
   DOM.toastContainer.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = '0';
-    toast.style.transform = 'translateY(10px)';
-    toast.style.transition = 'all 0.3s ease';
-    setTimeout(() => toast.remove(), 300);
-  }, 3200);
+    toast.style.transform = 'translateY(6px)';
+    toast.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+    setTimeout(() => toast.remove(), 220);
+  }, 2800);
 }
 
 /**
@@ -39,13 +40,13 @@ export function renderUserProfile() {
 
   if (DOM.profileCardEmail) {
     const college = p.college || 'VIT Pune';
-    DOM.profileCardEmail.textContent = `🌱 Eco Scholar • ${college}`;
+    DOM.profileCardEmail.textContent = `Scholar • ${college}`;
   }
 
   if (DOM.switchProfileName1) DOM.switchProfileName1.textContent = '✓';
 
-  if (DOM.profileStreakTag) DOM.profileStreakTag.textContent = `🔥 ${p.streakDays || 0} Day Streak`;
-  if (DOM.profilePointsTag) DOM.profilePointsTag.textContent = `⭐ ${p.greenPoints || 0} Pts`;
+  if (DOM.profileStreakTag) DOM.profileStreakTag.textContent = `${p.streakDays || 0}d streak`;
+  if (DOM.profilePointsTag) DOM.profilePointsTag.textContent = `${p.greenPoints || 0} pts`;
 
   if (DOM.userPointsValue) DOM.userPointsValue.textContent = p.greenPoints || 0;
 }
@@ -70,20 +71,20 @@ export function renderKPIs() {
   const diffPct = Math.round(((nationalAvg - todayTotal) / nationalAvg) * 100);
   if (diffPct >= 0) {
     DOM.todayBenchmarkBadge.className = 'trend-badge positive';
-    DOM.todayBenchmarkBadge.textContent = `↓ ${diffPct}% below avg`;
+    DOM.todayBenchmarkBadge.textContent = `−${diffPct}% vs avg`;
   } else {
     DOM.todayBenchmarkBadge.className = 'trend-badge negative';
-    DOM.todayBenchmarkBadge.textContent = `↑ ${Math.abs(diffPct)}% above avg`;
+    DOM.todayBenchmarkBadge.textContent = `+${Math.abs(diffPct)}% vs avg`;
   }
 
   // Weekly average
   DOM.weeklyAvgValue.textContent = analysis.dailyAvg.toFixed(1);
   if (analysis.trendPercent <= 0) {
     DOM.weeklyTrendBadge.className = 'trend-badge positive';
-    DOM.weeklyTrendBadge.textContent = `↓ ${Math.abs(analysis.trendPercent)}%`;
+    DOM.weeklyTrendBadge.textContent = `−${Math.abs(analysis.trendPercent)}%`;
   } else {
     DOM.weeklyTrendBadge.className = 'trend-badge negative';
-    DOM.weeklyTrendBadge.textContent = `↑ ${analysis.trendPercent}%`;
+    DOM.weeklyTrendBadge.textContent = `+${analysis.trendPercent}%`;
   }
 
   // Green Score (0-100)
@@ -112,10 +113,10 @@ export async function renderAIRecommendations() {
   const dominantCat = analysis.dominantCategory || 'transport';
   const dominantCatMeta = (window.CarbonCalc && window.CarbonCalc.categoriesMeta)
     ? window.CarbonCalc.categoriesMeta[dominantCat]
-    : { name: 'Transportation', icon: '🚗' };
+    : { name: 'Transportation' };
 
   if (DOM.aiBehaviorSummary) {
-    DOM.aiBehaviorSummary.textContent = `Behavior Insight: Dominant source is ${dominantCatMeta ? dominantCatMeta.name : 'Transportation'} (${analysis.dominantCategoryPercentage || 0}%). Weekly footprint is ${analysis.isImproving ? 'improving' : 'steady'}.`;
+    DOM.aiBehaviorSummary.textContent = `Behavior insight: Dominant source is ${dominantCatMeta ? dominantCatMeta.name : 'Transportation'} (${analysis.dominantCategoryPercentage || 0}%). Trend is ${analysis.isImproving ? 'improving' : 'stable'}.`;
   }
 
   let recs = [];
@@ -130,8 +131,8 @@ export async function renderAIRecommendations() {
           co2eMonthlySaving: typeof r.saving_kg_per_month === 'number' ? r.saving_kg_per_month : (parseFloat(r.saving) || 15.0),
           impactScore: r.difficulty || 'High Impact',
           impactClass: (r.difficulty === 'Easy' || r.difficulty === 'Zero Cost') ? 'easy' : 'medium',
-          icon: dominantCatMeta?.icon || '🌱',
-          actionLabel: 'Adopt Habit'
+          category: dominantCat,
+          actionLabel: 'Adopt habit'
         }));
       }
     } catch (err) {
@@ -151,16 +152,15 @@ export async function renderAIRecommendations() {
     card.innerHTML = `
       <div class="rec-badge ${rec.impactClass}">${rec.impactScore}</div>
       <div>
-        <div class="rec-icon">${rec.icon}</div>
         <h4 class="rec-title">${rec.title}</h4>
         <p class="rec-desc">${rec.description}</p>
       </div>
       <div>
         <div class="rec-savings-bar">
-          <span style="font-size: 0.75rem; color: var(--text-muted);">Projected Benefit:</span>
-          <span class="rec-savings-val">-${rec.co2eMonthlySaving} kg/mo</span>
+          <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">Reduction:</span>
+          <span class="rec-savings-val tabular-num">−${rec.co2eMonthlySaving} kg/mo</span>
         </div>
-        <button class="btn-adopt-rec" data-rec-id="${rec.id}">
+        <button class="btn-secondary btn-adopt-rec" data-rec-id="${rec.id}">
           + ${rec.actionLabel}
         </button>
       </div>
@@ -173,7 +173,7 @@ export async function renderAIRecommendations() {
     btn.addEventListener('click', (e) => {
       const b = e.currentTarget;
       b.classList.add('adopted');
-      b.innerHTML = '✓ Habit Adopted (+30 pts)';
+      b.innerHTML = '✓ Habit adopted (+30 pts)';
       b.disabled = true;
 
       // Reward points
@@ -186,7 +186,7 @@ export async function renderAIRecommendations() {
       if (DOM.valSliderTransport) DOM.valSliderTransport.textContent = `${AppState.whatIfModifiers.transportReduction}%`;
       updateFuturePredictions();
 
-      showToast('🌱 Habit Adopted! Earned 30 Green Points & updated future trajectory.');
+      showToast('Habit adopted. +30 green points earned.');
     });
   });
 }
@@ -201,7 +201,10 @@ export function renderBadges() {
     const card = document.createElement('div');
     card.className = `badge-card ${b.status}`;
     card.innerHTML = `
-      <div class="badge-icon">${b.icon}</div>
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <span class="cat-dot ${b.category || 'transport'}"></span>
+        <span style="font-size: 0.68rem; font-family: var(--font-mono); color: var(--text-muted);">${b.status === 'unlocked' ? 'Unlocked' : 'In Progress'}</span>
+      </div>
       <div class="badge-name">${b.title}</div>
       <div class="badge-desc">${b.description}</div>
     `;
@@ -222,7 +225,7 @@ export function renderChallenges() {
     card.innerHTML = `
       <div class="challenge-top">
         <div class="challenge-title-wrap">
-          <span>${ch.icon}</span>
+          <span class="cat-dot ${ch.category || 'transport'}"></span>
           <span>${ch.title}</span>
         </div>
         <span class="challenge-reward">+${ch.rewardPoints} pts</span>
@@ -232,7 +235,7 @@ export function renderChallenges() {
       </div>
       <div class="challenge-footer">
         <span>${ch.current} / ${ch.target} ${ch.unit} completed (${pct}%)</span>
-        <span style="color: var(--accent-mint); font-weight: 500;">${ch.daysLeft} days remaining</span>
+        <span style="color: var(--accent-mint); font-weight: 500;">${ch.daysLeft}d left</span>
       </div>
     `;
     DOM.challengesContainer.appendChild(card);
@@ -248,35 +251,37 @@ export function renderActivityTable() {
 
   AppState.activities.slice(0, 10).forEach(act => {
     const tr = document.createElement('tr');
+
     const catMeta = (window.CarbonCalc && window.CarbonCalc.categoriesMeta)
-      ? window.CarbonCalc.categoriesMeta[act.category] || { name: act.category, icon: '•' }
-      : { name: act.category, icon: '•' };
+      ? window.CarbonCalc.categoriesMeta[act.category] || { name: act.category }
+      : { name: act.category };
 
     const monthlyBadge = act.period === 'monthly'
-      ? `<span class="trend-badge" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-size: 0.65rem; padding: 2px 6px; margin-left: 6px;">Monthly</span>`
+      ? `<span class="trend-badge" style="font-size: 0.65rem; padding: 1px 5px; margin-left: 6px;">monthly</span>`
       : '';
 
     const syncBadge = act.syncPending
-      ? `<span class="trend-badge" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; font-size: 0.65rem; padding: 2px 6px; margin-left: 6px;">pending sync</span>`
+      ? `<span class="trend-badge" style="color: var(--accent-amber); font-size: 0.65rem; padding: 1px 5px; margin-left: 6px;">pending sync</span>`
       : '';
 
     const co2Val = typeof act.co2e === 'number' ? act.co2e : (parseFloat(act.co2e) || 0);
 
     tr.innerHTML = `
-      <td>${act.date || ''} <span style="color: var(--text-muted); font-size: 0.75rem;">${act.time || ''}</span></td>
+      <td>${act.date || ''} <span style="color: var(--text-muted); font-size: 0.72rem;">${act.time || ''}</span></td>
       <td>
-        <span class="cat-pill ${act.category}">
-          <span>${catMeta.icon}</span> ${catMeta.name}
+        <span class="cat-pill">
+          <span class="cat-dot ${act.category}"></span>
+          <span>${catMeta.name}</span>
         </span>
       </td>
-      <td style="font-weight: 500; color: #ffffff;">${act.activityName || act.subTypeLabel || act.subType || ''}${monthlyBadge}${syncBadge}</td>
+      <td style="font-weight: 500; color: var(--text-primary);">${act.activityName || act.subTypeLabel || act.subType || ''}${monthlyBadge}${syncBadge}</td>
       <td>${act.amount} ${act.unit || ''}</td>
-      <td style="font-family: var(--font-heading); font-weight: 700; color: ${co2Val <= 0 ? 'var(--accent-mint)' : '#ffffff'};">
+      <td style="color: ${co2Val <= 0 ? 'var(--accent-mint)' : 'var(--text-primary)'}; font-weight: 500;">
         ${co2Val > 0 ? '+' : ''}${co2Val.toFixed(2)} kg
       </td>
-      <td style="color: var(--accent-amber); font-weight: 600;">+${act.pointsEarned || 10}</td>
+      <td style="color: var(--text-secondary); font-weight: 500;">+${act.pointsEarned || 10}</td>
       <td>
-        <button class="btn-delete-activity" data-id="${act.id}" title="Delete activity" style="background: none; border: none; cursor: pointer; color: #ef4444; font-size: 0.95rem; padding: 4px 8px; border-radius: 4px;">🗑️</button>
+        <button class="btn-delete-activity" data-id="${act.id}" title="Delete activity">Delete</button>
       </td>
     `;
     DOM.activityTableBody.appendChild(tr);
@@ -302,32 +307,27 @@ export function renderTodayMiniList() {
 
   if (todayActs.length === 0) {
     DOM.todayLogsMiniList.innerHTML = `
-      <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); font-size: 0.85rem;">
-        <span style="font-size: 1.75rem;">🌱</span><br><br>
-        No entries logged today yet.<br>Use the form on the left to add your first activity!
+      <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); font-size: 0.8rem;">
+        No entries logged today yet.<br>Use the form on the left to add your first activity.
       </div>
     `;
     return;
   }
 
   todayActs.forEach(act => {
-    const catMeta = (window.CarbonCalc && window.CarbonCalc.categoriesMeta)
-      ? window.CarbonCalc.categoriesMeta[act.category] || { icon: '🌿', color: '#10b981' }
-      : { icon: '🌿', color: '#10b981' };
-
     const co2Val = typeof act.co2e === 'number' ? act.co2e : (parseFloat(act.co2e) || 0);
 
     const itemEl = document.createElement('div');
     itemEl.className = 'today-log-item';
     itemEl.innerHTML = `
       <div class="today-log-item-left">
-        <span style="font-size: 1.1rem;">${catMeta.icon}</span>
+        <span class="cat-dot ${act.category}"></span>
         <div>
-          <div style="font-weight: 500; color: #ffffff;">${act.subTypeLabel || act.activityName || act.subType}</div>
-          <div style="font-size: 0.72rem; color: var(--text-muted);">${act.amount} ${act.unit || ''} • ${act.time || ''}</div>
+          <div style="font-weight: 500; color: var(--text-primary); font-size: 0.82rem;">${act.subTypeLabel || act.activityName || act.subType}</div>
+          <div style="font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-mono);">${act.amount} ${act.unit || ''} • ${act.time || ''}</div>
         </div>
       </div>
-      <div class="today-log-co2">+${co2Val.toFixed(2)} kg</div>
+      <div class="today-log-co2 tabular-num">+${co2Val.toFixed(2)} kg</div>
     `;
     DOM.todayLogsMiniList.appendChild(itemEl);
   });
@@ -399,8 +399,8 @@ export async function updateFuturePredictions() {
     }
     if (modelSub) {
       modelSub.textContent = source === 'Flask model'
-        ? 'Status Quo vs AI-Optimized Lifestyle (Scikit-Learn OLS)'
-        : 'Status Quo vs AI-Optimized Lifestyle (Local OLS fallback)';
+        ? 'Status Quo vs Optimized Scenario (Scikit-Learn OLS)'
+        : 'Status Quo vs Optimized Scenario (Local OLS fallback)';
     }
     window.CarbonCharts.updatePrediction(predResult);
   }
@@ -437,7 +437,6 @@ export function buildLocalHistory(days = 14) {
     if (act.period === 'monthly') {
       const y = parseInt(actDate.substring(0, 4), 10);
       const m = parseInt(actDate.substring(5, 7), 10);
-      // Days in that calendar month: new Date(y, m, 0).getDate()
       const daysInMonth = new Date(y, m, 0).getDate();
       const dailyShare = co2Val / daysInMonth;
 
@@ -493,7 +492,6 @@ export async function refreshSummaryAndCharts() {
           AppState.history = summaryDays;
           AppState.isSampleData = false;
         } else {
-          // If database is empty, keep sample mock data and label it
           AppState.history = Storage.get('ecotrack_history', [...(window.MockData ? window.MockData.history14Days : [])]);
           AppState.isSampleData = true;
         }
@@ -508,16 +506,6 @@ export async function refreshSummaryAndCharts() {
     const local = buildLocalHistory(14);
     AppState.history = local.history;
     AppState.isSampleData = local.isSampleData;
-  }
-
-  // Update trend chart subtitle/badge based on sample vs real data
-  const sub = DOM.trendChartSubtitle || document.getElementById('trendChartSubtitle');
-  if (sub) {
-    if (AppState.isSampleData) {
-      sub.innerHTML = `Sample data · Log activities in Daily Logger to see real trends`;
-    } else {
-      sub.innerHTML = `Real logs · Continuous 14-day history from SQLite`;
-    }
   }
 
   renderUserProfile();

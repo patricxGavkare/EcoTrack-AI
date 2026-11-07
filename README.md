@@ -28,7 +28,7 @@ To run the complete backend API and database test suite:
 C:\venvs\ecotrack\Scripts\python.exe -m unittest discover -s backend/tests -v
 ```
 
-All 52 tests execute against isolated temporary SQLite databases (`tempfile`), leaving the live production database untouched.
+All 55 tests execute against isolated temporary SQLite databases (`tempfile`), leaving the live production database untouched.
 
 ---
 
@@ -58,18 +58,19 @@ Website/
 ├── backend/                         # Python Backend (Flask + ML + SQLite)
 │   ├── app.py                       # REST API endpoints & Scikit-learn OLS model
 │   ├── requirements.txt             # Python dependencies
+│   ├── instance/                    # Instance-specific database directory
+│   │   └── ecotrack.db              # SQLite persistent database (auto-created)
 │   ├── data/                        # Externalized datasets & configuration
 │   │   ├── config.json              # Benchmarks, predict weights, limits, LPG & shopping
 │   │   ├── emission_factors.json    # 7 categories with scientific honesty flags (verified)
-│   │   ├── recommendations.json     # Actionable reduction tips sorted by impact
-│   │   └── ecotrack.db              # SQLite persistent database (auto-created)
+│   │   └── recommendations.json     # Actionable reduction tips sorted by impact
 │   ├── db/
 │   │   ├── schema.sql               # Database schema definition with index
 │   │   └── database.py              # Parameterized SQLite queries & daily aggregation
 │   └── tests/
-│       └── test_api.py              # Comprehensive unit tests (52 tests)
+│       └── test_api.py              # Comprehensive unit tests (55 tests)
 │
-├── .gitignore                       # Git ignore list (caches, venvs, ecotrack.db)
+├── .gitignore                       # Git ignore list (caches, venvs, backend/instance/)
 └── README.md                        # Documentation
 ```
 

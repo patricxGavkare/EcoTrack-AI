@@ -22,10 +22,10 @@ def get_default_db_path():
     try:
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
             conf = json.load(f)
-            rel_path = conf.get("database", {}).get("path", "data/ecotrack.db")
+            rel_path = conf.get("database", {}).get("path", "instance/ecotrack.db")
             return os.path.abspath(os.path.join(BASE_DIR, rel_path))
     except Exception:
-        return os.path.abspath(os.path.join(BASE_DIR, "data", "ecotrack.db"))
+        return os.path.abspath(os.path.join(BASE_DIR, "instance", "ecotrack.db"))
 
 def get_connection(db_path=None):
     """Establishes connection to the SQLite database with Row factory."""
